@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics 101</title>
+<link rel="icon" type="image/png" href="icon.png">
+
+<script>
+    // Runs before the page shows: previously wrong password -> redirect (local page)
+    (function () {
+        if (document.cookie.includes("launcher_wrong_password=1")) {
+            window.location.replace("haha.html");
+        }
+    })();
+</script>
+
+<style>
+:root {
+    --bg:#11111b; --base:#1e1e2e; --surface:#313244; --text:#cdd6f4; --muted:#a6adc8;
+    --accent:#cba6f7; --accent2:#89b4fa; --red:#f38ba8; --green:#a6e3a1; --yellow:#f9e2af; --inactive:#45475a;
+    --win-bg:rgba(30,30,46,.82);
+    --gap:12px; --bw:2px; --radius:12px; --blur:14px; --bar-h:40px;
+    --font:"JetBrains Mono","JetBrainsMono Nerd Font","Fira Code","Cascadia Code",ui-monospace,monospace;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; padding:0; min-height:100%; background:var(--bg); color:#fff; font-family:"Segoe UI",sans-serif; overflow-x:hidden; overflow-y:auto; }
+body.noanim *, body.noanim *::before, body.noanim *::after { transition:none !important; animation:none !important; }
+
+/* ================= Decoy textbook ================= */
+#book-decoy { position:fixed; inset:0; z-index:9999; display:flex; background:#fdfdfd; color:#333; font-family:Georgia,serif; }
+.book-sidebar { display:flex; flex-direction:column; width:260px; padding:40px 20px; background:#ececec; border-right:2px solid #ccc; }
+.book-sidebar h2 { margin:0 0 20px; padding-bottom:10px; font-size:1.1rem; border-bottom:2px solid #333; }
+.nav-item { margin-bottom:5px; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold; transition:.2s; }
+.nav-item:hover { background:#d0d0d0; }
+.nav-active { background:#333 !important; color:#fff; }
+.book-content { flex-grow:1; overflow-y:auto; padding:60px; color:#333; line-height:1.8; }
+.chapter { display:none; max-width:800px; margin:0 auto; }
+.chapter.active { display:block; }
+.equation { margin:20px 0; padding:15px; background:#f4f4f4; border:1px solid #ddd; border-radius:5px; text-align:center; font-family:serif; font-size:1.2rem; }
+#secret-trigger { margin-top:auto; color:#bbb; cursor:pointer; font-size:.7rem; text-align:center; user-select:none; }
+
+#password-modal { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.48); }
+.password-box { width:min(360px,calc(100vw - 40px)); padding:24px; background:#fff; color:#222; border-radius:12px; box-shadow:0 16px 45px rgba(0,0,0,.42); font-family:"Segoe UI",sans-serif; }
+.password-box h2 { margin:0 0 8px; font-size:1.25rem; }
+.password-box p { margin:0 0 14px; color:#555; font-size:.9rem; }
+.password-row { display:flex; gap:8px; }
+#password-input { flex:1; min-width:0; padding:11px 12px; border:1px solid #aaa; border-radius:7px; outline:none; font-size:1rem; }
+#password-input:focus { border-color:#ff7700; box-shadow:0 0 0 3px rgba(255,119,0,.18); }
+#toggle-password { width:48px; border:1px solid #aaa; border-radius:7px; background:#f4f4f4; cursor:pointer; font-size:1.05rem; }
+.password-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+.password-actions button { padding:9px 14px; border-radius:7px; cursor:pointer; font-weight:700; }
+#cancel-password { border:1px solid #aaa; background:#fff; color:#333; }
+#submit-password { border:1px solid #333; background:#333; color:#fff; }
+
+/* ================= Launcher shell ================= */
+#main-launcher, #menu, #game-overlay, #toasts { font-family:var(--font); color:var(--text); }
+#main-launcher { display:none; flex-direction:column; position:relative; height:100vh; width:100%; overflow:hidden; background:var(--bg); }
+
+#wallpaper { position:fixed; inset:0; z-index:0; background:var(--bg); transition:background .4s; }
+body[data-wall="aurora"] #wallpaper {
+    background:
+        radial-gradient(60vmax 40vmax at 12% 8%, color-mix(in srgb,var(--accent) 32%,transparent), transparent 62%),
+        radial-gradient(55vmax 45vmax at 92% 92%, color-mix(in srgb,var(--accent2) 28%,transparent), transparent 62%),
+        var(--bg); }
+body[data-wall="grid"] #wallpaper {
+    background-color:var(--bg);
+    background-image:
+        linear-gradient(color-mix(in srgb,var(--accent) 12%,transparent) 1px,transparent 1px),
+        linear-gradient(90deg,color-mix(in srgb,var(--accent) 12%,transparent) 1px,transparent 1px);
+    background-size:42px 42px; }
+body[data-wall="dots"] #wallpaper {
+    background-color:var(--bg);
+    background-image:radial-gradient(color-mix(in srgb,var(--accent2) 30%,transparent) 1.5px,transparent 1.7px);
+    background-size:26px 26px; }
+body[data-wall="solid"] #wallpaper { background:var(--bg); }
+
+/* Hyprland-style window: gradient active border, inactive grey border, gaps, rounding, blur */
+.win { position:relative; display:flex; flex-direction:column; border-radius:var(--radius); background:var(--win-bg);
+    backdrop-filter:blur(var(--blur)); -webkit-backdrop-filter:blur(var(--blur)); box-shadow:0 10px 32px rgba(0,0,0,.35); overflow:hidden; }
+.win::before { content:""; position:absolute; inset:0; z-index:20; pointer-events:none; border-radius:inherit; padding:var(--bw);
+    background:var(--inactive); transition:background .25s;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask-composite:exclude; }
+.win:hover::before, .win:focus-within::before, .win.active::before { background:linear-gradient(45deg,var(--accent),var(--accent2),var(--accent)); }
+.wtitle { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:.8rem; color:var(--muted); border-bottom:1px solid color-mix(in srgb,var(--inactive) 70%,transparent); flex:none; }
+.wtitle b { color:var(--accent); }
+.wtitle .spacer { flex:1; }
+.dots { display:flex; gap:6px; }
+.dots i { width:10px; height:10px; border-radius:50%; background:var(--red); }
+.dots i:nth-child(2) { background:var(--yellow); } .dots i:nth-child(3) { background:var(--green); }
+.wbtn { background:transparent; border:1px solid var(--inactive); color:var(--text); border-radius:6px; padding:3px 10px; cursor:pointer; font:inherit; font-size:.75rem; }
+.wbtn:hover { border-color:var(--accent); color:var(--accent); }
+.wbtn.red { border-color:var(--red); color:var(--red); } .wbtn.red:hover { background:color-mix(in srgb,var(--red) 20%,transparent); }
+
+/* Waybar */
+#bar { position:relative; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:var(--gap); margin:var(--gap) var(--gap) 0; }
+.pill { display:flex; align-items:center; gap:8px; height:var(--bar-h); padding:0 14px; border-radius:var(--radius);
+    background:var(--win-bg); backdrop-filter:blur(var(--blur)); border:var(--bw) solid var(--inactive); color:var(--text); font:inherit; font-size:.85rem; }
+button.pill { cursor:pointer; transition:.2s; }
+button.pill:hover { border-color:var(--accent); color:var(--accent); }
+.bar-right { display:flex; gap:var(--gap); }
+#ws { display:flex; gap:4px; padding:0 6px; }
+.ws-btn { border:0; background:transparent; color:var(--muted); font:inherit; font-size:.8rem; padding:5px 11px; border-radius:calc(var(--radius) - 4px); cursor:pointer; transition:.2s; }
+.ws-btn:hover { color:var(--text); background:color-mix(in srgb,var(--accent) 15%,transparent); }
+.ws-btn.on { background:linear-gradient(45deg,var(--accent),var(--accent2)); color:var(--bg); font-weight:700; }
+#clock { color:var(--accent); font-weight:700; letter-spacing:.5px; }
+#user-btn img { width:22px; height:22px; border-radius:50%; }
+
+/* Desktop tiling */
+#desktop { position:relative; z-index:1; flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:var(--gap); padding:var(--gap); }
+.side { display:flex; flex-direction:column; gap:var(--gap); min-height:0; overflow-y:auto; }
+#profile, #recent { flex:none; }
+#ach-mini { flex:1; min-height:0; cursor:pointer; }
+.pad { padding:14px 16px; }
+
+/* ESDE-style carousel */
+.esde { min-height:0; }
+.stage { position:relative; flex:1; min-height:0; overflow:hidden; display:flex; align-items:center; }
+.track { position:absolute; left:0; display:flex; gap:22px; transition:transform .38s cubic-bezier(.2,.8,.2,1); will-change:transform; }
+.card { position:relative; flex:none; width:190px; height:250px; padding:18px; display:flex; flex-direction:column; justify-content:flex-end; gap:4px; text-align:left;
+    border-radius:calc(var(--radius) + 2px); cursor:pointer; overflow:hidden;
+    background:linear-gradient(160deg,hsl(var(--h) 38% 24%),hsl(var(--h) 45% 12%));
+    border:2px solid transparent; opacity:.5; transform:scale(.9); transition:transform .3s,opacity .3s,border-color .3s,box-shadow .3s; }
+.card .ic { position:absolute; top:22px; left:0; right:0; text-align:center; font-size:64px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+.card h3 { margin:0; font-size:1.1rem; }
+.card span { color:var(--accent); font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+.card em { position:absolute; top:10px; right:12px; font-style:normal; font-size:.7rem; color:var(--muted); }
+.card.sel { opacity:1; transform:scale(1.12); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent2), 0 12px 40px color-mix(in srgb,var(--accent) 40%,transparent); z-index:2; }
+.stage.grid { align-items:flex-start; overflow-y:auto; padding:18px; }
+.stage.grid .track { position:static; flex-wrap:wrap; justify-content:center; transform:none !important; gap:16px; width:100%; }
+.stage.grid .card { width:150px; height:170px; opacity:.85; transform:none; }
+.stage.grid .card .ic { font-size:44px; top:16px; }
+.stage.grid .card.sel { transform:scale(1.05); }
+.empty { margin:auto; color:var(--muted); }
+#info { flex:none; padding:10px 18px; text-align:center; border-top:1px solid color-mix(in srgb,var(--inactive) 70%,transparent); }
+#info strong { font-size:1.15rem; color:var(--accent); }
+#info small { display:block; color:var(--muted); margin-top:2px; }
+.helpbar { flex:none; display:flex; flex-wrap:wrap; justify-content:center; gap:6px 16px; padding:8px 14px 12px; color:var(--muted); font-size:.72rem; }
+kbd { background:var(--surface); border:1px solid var(--inactive); border-bottom-width:2px; border-radius:5px; padding:1px 6px; color:var(--text); font:inherit; }
+#search { width:150px; background:var(--surface); border:1px solid var(--inactive); color:var(--text); border-radius:6px; padding:3px 9px; font:inherit; font-size:.75rem; outline:none; }
+#search:focus { border-color:var(--accent); }
+
+/* neofetch tile */
+
+.bar-track { height:6px; border-radius:6px; background:var(--surface); overflow:hidden; margin:6px 0 10px; }
+.bar-track div { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .4s; }
+.mini-ach { display:flex; gap:10px; align-items:center; padding:5px 0; font-size:.78rem; }
+.mini-ach .i { font-size:1.2rem; } .mini-ach small { color:var(--muted); display:block; }
+
+/* game window */
+#game-overlay { position:fixed; inset:calc(var(--gap)*2 + var(--bar-h)) var(--gap) var(--gap) var(--gap); z-index:1000; display:none; }
+#game-overlay.full { inset:0; }
+#game-overlay .win { height:100%; width:100%; }
+#game-frame { flex:1; width:100%; border:0; background:#000; }
+
+/* menu */
+#menu { position:fixed; inset:0; z-index:2000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); }
+.menu-win { width:min(940px,94vw); height:min(640px,90vh); }
+.menu-body { flex:1; display:flex; min-height:0; }
+.menu-nav { width:200px; flex:none; padding:12px; display:flex; flex-direction:column; gap:6px; border-right:1px solid color-mix(in srgb,var(--inactive) 70%,transparent); }
+.menu-nav button { text-align:left; padding:10px 12px; border:0; border-radius:8px; background:transparent; color:var(--text); font:inherit; cursor:pointer; transition:.2s; }
+.menu-nav button:hover { background:color-mix(in srgb,var(--accent) 14%,transparent); }
+.menu-nav button.on { background:linear-gradient(45deg,var(--accent),var(--accent2)); color:var(--bg); font-weight:700; }
+#menu-pane { flex:1; overflow:auto; padding:16px 22px; }
+#menu-pane h2 { margin:0 0 4px; } #menu-pane h3 { margin:18px 0 6px; color:var(--accent); font-size:.8rem; text-transform:uppercase; letter-spacing:1.5px; }
+.row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:8px 12px; border-radius:8px; font-size:.88rem; }
+.row:hover { background:color-mix(in srgb,var(--accent) 10%,transparent); }
+.row select, .row input[type=text] { background:var(--surface); color:var(--text); border:1px solid var(--inactive); border-radius:6px; padding:5px 8px; font:inherit; font-size:.82rem; outline:none; }
+.row select:focus { border-color:var(--accent); }
+.range { display:flex; gap:10px; align-items:center; } .range input { accent-color:var(--accent); width:160px; } .range output { width:48px; text-align:right; color:var(--muted); font-size:.78rem; }
+.sw { appearance:none; -webkit-appearance:none; width:42px; height:22px; border-radius:22px; background:var(--surface); border:1px solid var(--inactive); position:relative; cursor:pointer; transition:.2s; }
+.sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--muted); transition:.2s; }
+.sw:checked { background:var(--accent); } .sw:checked::after { left:22px; background:var(--bg); }
+.swatches { display:flex; gap:6px; } .swatches button { width:22px; height:22px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; color:var(--text); font-size:.7rem; background:var(--surface); }
+.swatches button.on { border-color:var(--text); }
+.btn { padding:8px 16px; border-radius:8px; border:1px solid var(--accent); background:transparent; color:var(--accent); font:inherit; cursor:pointer; transition:.2s; }
+.btn:hover { background:var(--accent); color:var(--bg); }
+.btn.google { background:#fff; color:#222; border-color:#fff; font-weight:700; } .btn.google:hover { background:#eee; color:#111; }
+.note { color:var(--muted); font-size:.8rem; line-height:1.6; margin:8px 0; } .note code { color:var(--accent2); }
+.ach-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; margin-top:12px; }
+.ach { display:flex; gap:12px; padding:12px; border-radius:10px; background:color-mix(in srgb,var(--surface) 70%,transparent); border:1px solid var(--inactive); }
+.ach .i { font-size:1.8rem; } .ach b { display:block; } .ach small { color:var(--muted); display:block; font-size:.74rem; margin-top:2px; }
+.ach.locked { opacity:.42; filter:grayscale(1); } .ach.done { border-color:var(--accent); }
+.account-card { display:flex; align-items:center; gap:14px; padding:14px; border-radius:10px; background:color-mix(in srgb,var(--surface) 70%,transparent); margin:12px 0; }
+.account-card img { width:52px; height:52px; border-radius:50%; }
+
+/* toasts */
+#toasts { position:fixed; top:calc(var(--gap)*2 + var(--bar-h)); right:var(--gap); z-index:3000; display:flex; flex-direction:column; gap:10px; width:min(330px,calc(100vw - 24px)); pointer-events:none; }
+.toast { display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:var(--radius); background:var(--win-bg); backdrop-filter:blur(var(--blur));
+    border:var(--bw) solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.45); animation:slideIn .35s cubic-bezier(.2,.8,.2,1); }
+.toast .i { font-size:1.8rem; } .toast b { color:var(--accent); font-size:.72rem; text-transform:uppercase; letter-spacing:1px; display:block; }
+.toast small { color:var(--muted); display:block; }
+.toast.out { opacity:0; transform:translateX(30px); transition:.4s; }
+@keyframes slideIn { from { opacity:0; transform:translateX(60px); } to { opacity:1; transform:none; } }
+
+/* brand / hero / profile / welcome */
+.logo-mark { width:26px; height:26px; border-radius:8px; display:grid; place-items:center; color:var(--bg); font-size:.9rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 18px color-mix(in srgb,var(--accent) 55%,transparent); flex:none; }
+.logo-mark.big { width:64px; height:64px; border-radius:20px; font-size:1.8rem; margin:0 auto 4px; }
+.brand { font-weight:800; letter-spacing:2px; }
+.grad { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.bar-left { display:flex; gap:var(--gap); }
+#hero { flex:none; padding:18px 22px 4px; }
+#hero h1 { margin:0; font-size:1.7rem; font-weight:800; }
+#hero p { margin:4px 0 0; color:var(--muted); font-size:.82rem; }
+.profile-top { display:flex; align-items:center; gap:14px; }
+.avatar { width:54px; height:54px; border-radius:50%; display:grid; place-items:center; color:var(--bg); font-weight:800; font-size:1.4rem; overflow:hidden; flex:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+.avatar img { width:100%; height:100%; }
+.profile-top b { font-size:1.05rem; }
+.chips { display:flex; gap:8px; margin-top:12px; }
+.chip { flex:1; padding:8px 4px; border-radius:10px; text-align:center; background:color-mix(in srgb,var(--surface) 70%,transparent); }
+.chip b { display:block; font-size:1.05rem; color:var(--accent); }
+.chip small { color:var(--muted); font-size:.64rem; text-transform:uppercase; letter-spacing:1px; }
+.sec-title { font-size:.74rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent); margin-bottom:6px; font-weight:700; }
+.recent-item { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; cursor:pointer; font-size:.82rem; transition:.2s; }
+.recent-item:hover { background:color-mix(in srgb,var(--accent) 14%,transparent); }
+.recent-item small { color:var(--muted); margin-left:auto; }
+.profile-btn { margin-top:12px; width:100%; }
+@keyframes rise { from { opacity:0; transform:translateY(16px) scale(.98); } to { opacity:1; transform:none; } }
+#desktop .win { animation:rise .6s cubic-bezier(.2,.8,.2,1) both; }
+#desktop .side .win:nth-child(1) { animation-delay:.08s; } #desktop .side .win:nth-child(2) { animation-delay:.16s; } #desktop .side .win:nth-child(3) { animation-delay:.24s; }
+#welcome { position:fixed; inset:0; z-index:2500; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55);
+    backdrop-filter:blur(12px); font-family:var(--font); color:var(--text); }
+.welcome-card { width:min(440px,92vw); padding:36px 32px; text-align:center; gap:12px; overflow:visible; }
+.wl-title { margin:0; font-size:1.7rem; letter-spacing:4px; line-height:1.2; }
+.wl-tag { margin:0 0 6px; color:var(--muted); font-size:.85rem; line-height:1.6; }
+#wl-name { background:var(--surface); border:1px solid var(--inactive); color:var(--text); border-radius:10px; padding:12px 14px; font:inherit; outline:none; text-align:center; }
+#wl-name:focus { border-color:var(--accent); }
+.welcome-card .btn { padding:12px 16px; font-size:.95rem; }
+.g-mark { font-weight:900; color:#4285f4; margin-right:8px; font-size:1.1rem; }
+.or { color:var(--muted); font-size:.72rem; letter-spacing:2px; }
+#menu textarea { width:100%; background:var(--surface); color:var(--text); border:1px solid var(--inactive); border-radius:8px; padding:8px; font:inherit; font-size:.72rem; resize:vertical; margin:8px 0; outline:none; }
+#menu button:focus, #menu select:focus, #menu input:focus, #menu textarea:focus { outline:2px solid var(--accent); outline-offset:2px; }
+
+@media (max-width:900px) {
+    .book-sidebar { width:150px; padding:25px 10px; } .book-content { padding:30px 20px; }
+    #desktop { grid-template-columns:1fr; overflow-y:auto; }
+    .esde { min-height:430px; } .side { min-height:auto; } #ach-mini { flex:none; }
+    .bar-center { display:none; } .menu-body { flex-direction:column; } .menu-nav { width:auto; flex-direction:row; overflow-x:auto; border-right:0; }
+}
+</style>
+</head>
+<body data-wall="aurora">
+
+<!-- Decoy textbook -->
+<div id="book-decoy">
+    <div class="book-sidebar">
+        <h2>Digital Textbook</h2>
+        <div class="nav-item nav-active" onclick="showChapter(1, this)">1.0 Kinematics</div>
+        <div class="nav-item" onclick="showChapter(2, this)">2.0 Newton's Laws</div>
+        <div class="nav-item" onclick="showChapter(3, this)">3.0 Thermodynamics</div>
+        <div class="nav-item" onclick="showChapter(4, this)">4.0 Quantum Theory</div>
+        <div id="secret-trigger" ondblclick="unlockLauncher()">© 2026 Hugh Young Digital Edition</div>
+    </div>
+    <div class="book-content">
+        <div id="ch1" class="chapter active">
+            <h1>Chapter 1: Kinematics</h1><hr>
+            <p>Kinematics is the study of motion without considering its causes.</p>
+            <div class="equation">v = Δx / Δt</div>
+            <p>Velocity is defined as the rate of change of position with respect to time.</p>
+        </div>
+        <div id="ch2" class="chapter">
+            <h1>Chapter 2: Newton's Laws</h1><hr>
+            <p>The relationship between an object's mass and the force required to accelerate it.</p>
+            <div class="equation">F = m · a</div>
+        </div>
+        <div id="ch3" class="chapter">
+            <h1>Chapter 3: Thermodynamics</h1><hr>
+            <p>The branch of physics dealing with heat, work, and temperature.</p>
+            <div class="equation">ΔU = Q − W</div>
+        </div>
+        <div id="ch4" class="chapter">
+            <h1>Chapter 4: Quantum Theory</h1><hr>
+            <p>Describing physical properties at the scale of atoms and subatomic particles.</p>
+            <div class="equation">E = h · f</div>
+        </div>
+    </div>
+</div>
+
+<!-- Password modal -->
+<div id="password-modal" role="dialog" aria-modal="true" aria-labelledby="password-title">
+    <div class="password-box">
+        <h2 id="password-title">Enter password</h2>
+        <p>Enter the password to open the launcher.</p>
+        <div class="password-row">
+            <input id="password-input" type="password" autocomplete="off" placeholder="Password" aria-label="Password">
+            <button id="toggle-password" type="button" aria-label="Show password" title="Show password">👁</button>
+        </div>
+        <p id="password-error" aria-live="polite"></p>
+        <div class="password-actions">
+            <button id="cancel-password" type="button">Cancel</button>
+            <button id="submit-password" type="button">Unlock</button>
+        </div>
+    </div>
+</div>
+
+<!-- Launcher -->
+<div id="main-launcher">
+    <!-- Replace PASTE_BASE64_HERE with your mp3 as base64 (base64 -w 0 music.mp3) -->
+    <audio id="cyber-audio" src="data:audio/mpeg;base64,PASTE_BASE64_HERE" loop preload="auto"></audio>
+    <div id="wallpaper"></div>
+
+    <header id="bar">
+        <div class="bar-left"><div class="pill brand"><div class="logo-mark">✦</div><span class="grad" id="brand-name">SPEED LAUNCHER</span></div><div class="pill" id="ws" aria-label="Workspaces"></div></div>
+        <div class="pill bar-center" id="clock">--</div>
+        <div class="bar-right">
+            <button class="pill" id="music-btn" type="button" aria-label="Play or pause music">▶ Play</button>
+            <button class="pill" id="user-btn" type="button" title="Account">👤 guest</button>
+            <button class="pill" id="menu-btn" type="button" title="Menu (M)">☰ Menu</button>
+        </div>
+    </header>
+
+    <main id="desktop">
+        <section class="win esde" id="esde">
+            <div class="wtitle">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span><span class="app-name">speed launcher</span> ▸ <b id="ws-name">All</b></span>
+                <span class="spacer"></span>
+                <span id="count"></span>
+                <input id="search" type="text" placeholder="/ search" autocomplete="off" aria-label="Search">
+            </div>
+            <div id="hero"></div>
+            <div class="stage" id="stage"><div class="track" id="track"></div></div>
+            <div id="info"></div>
+            <div class="helpbar">
+                <span><kbd>←</kbd><kbd>→</kbd> browse</span><span><kbd>Enter</kbd> launch</span><span><kbd>1</kbd>–<kbd>4</kbd> workspace</span>
+                <span><kbd>/</kbd> search</span><span><kbd>M</kbd> menu</span><span><kbd id="panic-hint">P</kbd> panic</span>
+                <span id="pad-hint" style="display:none">🎮 <kbd>A</kbd> launch · <kbd>B</kbd> back · <kbd>LB</kbd><kbd>RB</kbd> workspace · <kbd>Y</kbd> menu · hold <kbd>Select</kbd> panic</span>
+            </div>
+        </section>
+
+        <aside class="side">
+            <section class="win pad" id="profile"></section>
+            <section class="win pad" id="recent"></section>
+            <section class="win pad" id="ach-mini" title="Open achievements"></section>
+        </aside>
+    </main>
+
+    <div id="game-overlay">
+        <div class="win active">
+            <div class="wtitle">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span id="current-title" style="color:var(--accent);font-weight:700;">RUNNING</span>
+                <span class="spacer"></span>
+                <button class="wbtn" id="full-btn" type="button">⛶ Fullscreen</button>
+                <button class="wbtn red" type="button" onclick="closeGame()">✕ EXIT HUB</button>
+            </div>
+            <iframe id="game-frame" src="about:blank" title="Launcher content"></iframe>
+        </div>
+    </div>
+
+    <div id="menu">
+        <div class="win menu-win active">
+            <div class="wtitle">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span>main menu ▸ <b id="menu-title">Settings</b></span>
+                <span class="spacer"></span>
+                <button class="wbtn" id="menu-close" type="button">✕ Close (Esc)</button>
+            </div>
+            <div class="menu-body">
+                <nav class="menu-nav" id="menu-nav"></nav>
+                <section id="menu-pane"></section>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcome">
+        <div class="win welcome-card active">
+            <div class="logo-mark big">✦</div>
+            <h1 class="wl-title grad" id="wl-title">SPEED LAUNCHER</h1>
+            <p class="wl-tag">Sign in to save your achievements and settings across devices, or just pick a name.</p>
+            <button id="wl-google" class="btn google" type="button"><span class="g-mark">G</span>Sign in with Google</button>
+            <div id="wl-gbtn" style="display:none;justify-content:center"></div>
+            <div class="or">— OR —</div>
+            <input id="wl-name" type="text" maxlength="20" placeholder="Choose a display name" autocomplete="off" aria-label="Display name">
+            <button id="wl-guest" class="btn" type="button">Continue</button>
+            <p id="wl-note" class="note"></p>
+        </div>
+    </div>
+
+    <div id="toasts"></div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG
+   ===================================================================== */
+const correctPassword = "_Sunnymelon22";
+const wrongPasswordRedirect = "haha.html";   // local page in the same folder as index.html
+const GAMES_DIR = "games/";                   // ~/totalymath/games/
+
+// Firebase (optional): fill these in from Firebase console -> Project settings -> Your apps (Web).
+// Leave apiKey empty and the launcher just works offline with local saves.
+// Google sign-in WITHOUT Firebase: Google Cloud Console -> APIs & Services -> Credentials -> Create OAuth client ID (Web application).
+// Add the address you open this page from under "Authorized JavaScript origins", then paste the Client ID here.
+const GOOGLE_CLIENT_ID = "";
+
+const FIREBASE_CONFIG = { apiKey:"", authDomain:"", projectId:"", appId:"" };
+const FIREBASE_VERSION = "10.12.2";
+const APP_NAME = "Speed Launcher";          // change this to rename the whole launcher
+const REQUIRE_LOGIN = false;      // true = Google sign-in is mandatory (only once Google sign-in is configured)
+
+/* =====================================================================
+   DATA
+   ===================================================================== */
+// [category, title, file inside /games, window name]
+const ITEMS = [
+    ["System","OS","os.html","Operating System"],
+    ["Internet","Browser","browser.html","WebBrowser"],
+    ["Game","GamesDB","gamesdb.html","CrisperV4"],
+    ["Game","DROID","droid.html","Droid Engine"],
+    ["Game","DRIFT","drift.html","DRIFT"],
+    ["Game","Cartridge","doom.html","Cartridge"],
+    ["Utility","Audio Spy","audiospy.html","Audio Tools"],
+    ["Game","ROCKET","rocket.html","Game"],
+    ["Game","2D Rivals","rivals2d.html","2D"],
+    ["MD","GPLV3","license.html","License"],
+    ["Game","CookieClicker","cookieclicker.html","Clicker"],
+    ["Game","FNAF3","fnaf3.html","Horror"],
+    ["Game","Stack","stack.html","Fun"],
+    ["Game","Polytrack","polytrack.html","Racing"],
+    ["Utility","Copy.sh","v86.html","CLI"],
+    ["Game","GamesDB2","gamesdb2.html","MathDuck"],
+    ["Game","Minecraft","minecraft.html","Voxel"],
+    ["Game","GamesDB3","gamesdb3.html","UnblockedIDK"],
+    ["Music","LofiPlayer","lofi.html","LofiMusic"],
+    ["Game","TornadoSIM","tornado.html","TornadoGame"],
+    ["Game","99Nights","99nights.html","99NightsInTheForest"],
+    ["Game","Pokemon","pokemon.html","PokemonAll"],
+    ["Game","PaintWarzoneFPS","paintwarzone.html","FPS"],
+    ["Game","Minecraft2D","minecraft2d.html","FPS"],
+    ["Profile","ME","me.html","GUNS.LOL"],
+    ["Game","FunnyShooter2","funnyshooter2.html","FunnyFPS"]
+].map(([cat, title, file, name]) => ({ cat, title, file, name, id:file.replace(/\.html$/, "") }));
+
+const CAT_ICON = { System:"🖥️", Internet:"🌐", Game:"🎮", Utility:"🛠️", MD:"📜", Music:"🎵", Profile:"👤" };
+const WORKSPACES = [
+    { n:"All",   cats:null },
+    { n:"Games", cats:["Game"] },
+    { n:"Tools", cats:["System","Internet","Utility","MD"] },
+    { n:"Media", cats:["Music","Profile"] }
+];
+
+const THEMES = {
+    mocha:  { name:"Catppuccin Mocha", bg:"#11111b", base:"#1e1e2e", surface:"#313244", text:"#cdd6f4", muted:"#a6adc8", accent:"#cba6f7", accent2:"#89b4fa", red:"#f38ba8", green:"#a6e3a1", yellow:"#f9e2af", inactive:"#45475a" },
+    rose:   { name:"Rosé Pine",        bg:"#191724", base:"#1f1d2e", surface:"#26233a", text:"#e0def4", muted:"#908caa", accent:"#c4a7e7", accent2:"#ebbcba", red:"#eb6f92", green:"#9ccfd8", yellow:"#f6c177", inactive:"#403d52" },
+    gruv:   { name:"Gruvbox",          bg:"#1d2021", base:"#282828", surface:"#3c3836", text:"#ebdbb2", muted:"#a89984", accent:"#fabd2f", accent2:"#fe8019", red:"#fb4934", green:"#b8bb26", yellow:"#fabd2f", inactive:"#504945" },
+    tokyo:  { name:"Tokyo Night",      bg:"#16161e", base:"#1a1b26", surface:"#24283b", text:"#c0caf5", muted:"#787c99", accent:"#7aa2f7", accent2:"#bb9af7", red:"#f7768e", green:"#9ece6a", yellow:"#e0af68", inactive:"#3b4261" },
+    nord:   { name:"Nord",             bg:"#242933", base:"#2e3440", surface:"#3b4252", text:"#eceff4", muted:"#aab1c0", accent:"#88c0d0", accent2:"#81a1c1", red:"#bf616a", green:"#a3be8c", yellow:"#ebcb8b", inactive:"#4c566a" },
+    dracula:{ name:"Dracula",          bg:"#191a21", base:"#282a36", surface:"#44475a", text:"#f8f8f2", muted:"#9aa0b8", accent:"#bd93f9", accent2:"#ff79c6", red:"#ff5555", green:"#50fa7b", yellow:"#f1fa8c", inactive:"#44475a" },
+    orange: { name:"Speed Orange",     bg:"#05070a", base:"#0b0d12", surface:"#1a1d24", text:"#ffffff", muted:"#9aa3b0", accent:"#ff7700", accent2:"#ffb347", red:"#ff4444", green:"#6fdc8c", yellow:"#ffd166", inactive:"#3a3f4a" }
+};
+
+const CLOAKS = {
+    off:       { label:"Off (Physics 101)",  title:"Physics 101", icon:null },
+    docs:      { label:"Google Docs",        title:"Untitled document - Google Docs", icon:["#1a73e8","D"] },
+    classroom: { label:"Google Classroom",   title:"Classes", icon:["#0f9d58","C"] },
+    drive:     { label:"Google Drive",       title:"My Drive - Google Drive", icon:["#fbbc04","▲"] }
+};
+
+const DEFAULTS = { theme:"mocha", accent:"", wall:"aurora", gap:12, bw:2, radius:12, opacity:82, blur:14, anim:true,
+    layout:"carousel", h24:false, secs:true, font:"mono", volume:50, panic:"p", cloak:"off" };
+
+const SCHEMA = [
+    { section:"Appearance" },
+    { key:"theme", label:"Theme", type:"select", options:Object.keys(THEMES).map(k => [k, THEMES[k].name]) },
+    { key:"accent", label:"Accent color", type:"swatch" },
+    { key:"wall", label:"Wallpaper", type:"select", options:[["aurora","Aurora"],["grid","Grid"],["dots","Dots"],["solid","Solid"]] },
+    { key:"font", label:"Font", type:"select", options:[["mono","Monospace (rice)"],["sans","Sans-serif"]] },
+    { key:"layout", label:"Game list layout", type:"select", options:[["carousel","Carousel (ESDE)"],["grid","Grid"]] },
+    { section:"Hyprland" },
+    { key:"gap", label:"Gaps", type:"range", min:0, max:40, unit:"px" },
+    { key:"bw", label:"Border size", type:"range", min:1, max:6, unit:"px" },
+    { key:"radius", label:"Rounding", type:"range", min:0, max:26, unit:"px" },
+    { key:"opacity", label:"Window opacity", type:"range", min:40, max:100, unit:"%" },
+    { key:"blur", label:"Blur", type:"range", min:0, max:30, unit:"px" },
+    { key:"anim", label:"Animations", type:"toggle" },
+    { section:"Clock" },
+    { key:"h24", label:"24-hour clock", type:"toggle" },
+    { key:"secs", label:"Show seconds", type:"toggle" },
+    { section:"Audio" },
+    { key:"volume", label:"Music volume", type:"range", min:0, max:100, unit:"%" },
+    { section:"Privacy" },
+    { key:"panic", label:"Panic key", type:"select", options:[["p","P"],["`","` (backtick)"],["Delete","Delete"],["\\","\\"]] },
+    { key:"cloak", label:"Tab cloak", type:"select", options:Object.keys(CLOAKS).map(k => [k, CLOAKS[k].label]) }
+];
+const SWATCHES = ["", "#f38ba8", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89b4fa", "#cba6f7", "#f5c2e7", "#ff7700"];
+
+/* =====================================================================
+   ACHIEVEMENTS
+   ===================================================================== */
+const totalLaunches = () => Object.values(state.launched).reduce((a, b) => a + b, 0);
+const ACH = [
+    { id:"hello",     icon:"👋", name:"Hello, World",        desc:"Unlock the launcher",               check:() => true },
+    { id:"pad",       icon:"🎮", name:"Plug & Play",         desc:"Connect a controller",              check:() => state.counters.pad >= 1 },
+    { id:"start",     icon:"🕹️", name:"Press Start",          desc:"Launch your first app",             check:() => totalLaunches() >= 1 },
+    { id:"regular",   icon:"🔥", name:"Regular",             desc:"Launch 10 times",                   check:() => totalLaunches() >= 10 },
+    { id:"nolife",    icon:"💯", name:"No Life",             desc:"Launch 50 times",                   check:() => totalLaunches() >= 50 },
+    { id:"complete",  icon:"🏆", name:"Completionist",       desc:"Launch every app at least once",    check:() => ITEMS.every(i => state.launched[i.id]) },
+    { id:"explorer",  icon:"🧭", name:"Explorer",            desc:"Visit every workspace",             check:() => WORKSPACES.every((_, i) => state.visited.includes(i)) },
+    { id:"rice",      icon:"🍚", name:"It's Called Ricing",  desc:"Switch themes 3 times",             check:() => state.counters.themeChanges >= 3 },
+    { id:"tinker",    icon:"🔧", name:"Tinkerer",            desc:"Change 10 settings",                check:() => state.counters.settingChanges >= 10 },
+    { id:"panic",     icon:"🚨", name:"Teacher Incoming",    desc:"Use the panic button",              check:() => state.counters.panics >= 1 },
+    { id:"keys",      icon:"⌨️", name:"Keyboard Warrior",    desc:"Launch 5 apps with the keyboard",   check:() => state.counters.keyLaunch >= 5 },
+    { id:"dj",        icon:"🎧", name:"DJ",                  desc:"Press play on the music",           check:() => state.counters.music >= 1 },
+    { id:"night",     icon:"🦉", name:"Night Owl",           desc:"Open the launcher after midnight",  check:() => new Date().getHours() < 5 },
+    { id:"marathon",  icon:"⏱️", name:"Marathon",            desc:"30 minutes of total play time",     check:() => state.playtime >= 1800 },
+    { id:"cloud",     icon:"☁️", name:"Head in the Clouds",  desc:"Sign in with Google",               check:() => !!fb.user },
+    { id:"cloak",     icon:"🥷", name:"Undercover",          desc:"Enable a tab cloak",                check:() => state.settings.cloak !== "off" },
+    { id:"seeker",    icon:"🔎", name:"Seeker",              desc:"Use the search bar",                check:() => state.counters.searches >= 1 }
+];
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const LS_KEY = "speedlauncher.v2";
+function freshState() {
+    return { google:null, name:"", onboarded:false, recent:[], settings:{ ...DEFAULTS }, settingsAt:0, launched:{}, playtime:0, ach:{}, visited:[0],
+        counters:{ themeChanges:0, settingChanges:0, panics:0, keyLaunch:0, music:0, searches:0, pad:0 } };
+}
+function loadState() {
+    try {
+        const s = JSON.parse(localStorage.getItem(LS_KEY));
+        if (s) { const f = freshState();
+            return { ...f, ...s, settings:{ ...f.settings, ...s.settings }, counters:{ ...f.counters, ...s.counters } }; }
+    } catch (e) {}
+    return freshState();
+}
+let state = loadState();
+let pushTimer = null;
+function saveState() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+    schedulePush();
+}
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function hexToRgb(h) { h = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); }
+function hue(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+function fmtDur(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
+    return h ? h + "h " + String(m).padStart(2, "0") + "m" : m + "m " + String(sec % 60).padStart(2, "0") + "s"; }
+
+const music = $("cyber-audio");
+const musicBtn = $("music-btn");
+let unlocked = false, sessionStart = Date.now();
+let curWs = 0, sel = 0, query = "", curGame = null, gameStart = 0, musicWasPlaying = false;
+
+/* =====================================================================
+   SETTINGS APPLY
+   ===================================================================== */
+function cloakIcon(color, letter) {
+    return "data:image/svg+xml," + encodeURIComponent(
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='" + color +
+        "'/><text x='16' y='23' font-size='20' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>" + letter + "</text></svg>");
+}
+function applySettings() {
+    const s = state.settings, t = THEMES[s.theme] || THEMES.mocha, r = document.documentElement.style;
+    const vars = { "--bg":t.bg, "--base":t.base, "--surface":t.surface, "--text":t.text, "--muted":t.muted,
+        "--accent":s.accent || t.accent, "--accent2":t.accent2, "--red":t.red, "--green":t.green, "--yellow":t.yellow, "--inactive":t.inactive };
+    for (const k in vars) r.setProperty(k, vars[k]);
+    const [R, G, B] = hexToRgb(t.base);
+    r.setProperty("--win-bg", "rgba(" + R + "," + G + "," + B + "," + (s.opacity / 100) + ")");
+    r.setProperty("--gap", s.gap + "px");
+    r.setProperty("--bw", s.bw + "px");
+    r.setProperty("--radius", s.radius + "px");
+    r.setProperty("--blur", s.blur + "px");
+    r.setProperty("--font", s.font === "sans" ? '"Segoe UI",system-ui,sans-serif'
+        : '"JetBrains Mono","JetBrainsMono Nerd Font","Fira Code","Cascadia Code",ui-monospace,monospace');
+    document.body.dataset.wall = s.wall;
+    document.body.classList.toggle("noanim", !s.anim);
+    $("stage").classList.toggle("grid", s.layout === "grid");
+    $("panic-hint").textContent = s.panic.length === 1 ? s.panic.toUpperCase() : s.panic;
+    try { music.volume = s.volume / 100; } catch (e) {}
+    // tab cloak
+    const c = CLOAKS[s.cloak] || CLOAKS.off, link = document.querySelector("link[rel~='icon']");
+    document.title = c.title;
+    if (link) link.href = c.icon ? cloakIcon(c.icon[0], c.icon[1]) : "icon.png";
+    tick();
+    if (unlocked) { updateSel(); renderSide(); }
+}
+function setSetting(key, val, commit = true) {
+    if (state.settings[key] === val && !commit) return;
+    state.settings[key] = val;
+    state.settingsAt = Date.now();
+    if (commit) {
+        state.counters.settingChanges++;
+        if (key === "theme") state.counters.themeChanges++;
+    }
+    applySettings();
+    if (commit) { saveState(); checkAch(); }
+}
+
+/* =====================================================================
+   ACHIEVEMENT ENGINE + TOASTS
+   ===================================================================== */
+function toast(icon, title, body) {
+    const t = el("div", "toast");
+    t.innerHTML = '<div class="i"></div><div><b></b><span></span><small></small></div>';
+    t.querySelector(".i").textContent = icon;
+    t.querySelector("b").textContent = title;
+    t.querySelector("span").textContent = body[0];
+    t.querySelector("small").textContent = body[1] || "";
+    $("toasts").appendChild(t);
+    setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 450); }, 5200);
+}
+function checkAch() {
+    if (!unlocked) return;
+    let any = false;
+    ACH.forEach(a => {
+        if (!state.ach[a.id] && a.check()) {
+            state.ach[a.id] = Date.now(); any = true;
+            toast(a.icon, "Achievement unlocked", [a.name, a.desc]);
+        }
+    });
+    if (any) { saveState(); renderSide(); if (menuOpen() && menuTab === "ach") renderMenuPane(); }
+}
+
+/* =====================================================================
+   FIREBASE (optional)
+   ===================================================================== */
+const fbEnabled = !!FIREBASE_CONFIG.apiKey;
+const fb = { auth:null, db:null, user:null, status:"" };
+let fbStarted = false;
+
+function loadScript(src) {
+    return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+}
+async function initFirebase() {
+    if (!fbEnabled || fbStarted) return;
+    fbStarted = true;
+    try {
+        const base = "https://www.gstatic.com/firebasejs/" + FIREBASE_VERSION + "/firebase-";
+        await loadScript(base + "app-compat.js");
+        await loadScript(base + "auth-compat.js");
+        await loadScript(base + "firestore-compat.js");
+        firebase.initializeApp(FIREBASE_CONFIG);
+        fb.auth = firebase.auth();
+        fb.db = firebase.firestore();
+        fb.auth.onAuthStateChanged(onAuth);
+    } catch (e) {
+        fb.status = "Couldn't load Firebase (offline or blocked?). Local saves still work.";
+        refreshAccountUi();
+    }
+}
+async function signIn() {
+    if (!fb.auth) { fb.status = "Firebase isn't ready yet."; refreshAccountUi(); return; }
+    try { await fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+    catch (e) { fb.status = "Sign-in failed: " + (e.code || e.message); refreshAccountUi(); }
+}
+async function signOut() {
+    if (fb.auth && fb.auth.currentUser) await fb.auth.signOut();
+    if (state.google) { state.google = null; saveState(); fb.user = null; try { google.accounts.id.disableAutoSelect(); } catch (e) {} }
+    refreshAccountUi(); renderSide();
+}
+
+async function onAuth(user) {
+    fb.user = user;
+    if (user) {
+        fb.status = "Syncing…"; refreshAccountUi();
+        try { await pullMerge(); fb.status = "Synced just now."; }
+        catch (e) { fb.status = "Sync failed: " + (e.code || e.message); }
+        toast("☁️", "Signed in", [user.displayName || user.email, "Progress syncs to your account"]);
+        if (welcomeOpen()) finishWelcome();
+        checkAch();
+    } else { fb.status = ""; }
+    refreshAccountUi();
+    renderSide();
+}
+function mergeInto(local, remote) {
+    if (!remote) return local;
+    for (const k in (remote.ach || {})) local.ach[k] = Math.min(local.ach[k] || Infinity, remote.ach[k]);
+    for (const k in (remote.launched || {})) local.launched[k] = Math.max(local.launched[k] || 0, remote.launched[k]);
+    local.playtime = Math.max(local.playtime, remote.playtime || 0);
+    if (!local.name && remote.name) local.name = remote.name;
+    local.onboarded = local.onboarded || !!remote.onboarded;
+    local.recent = Array.from(new Set([...(local.recent || []), ...(remote.recent || [])])).slice(0, 5);
+    for (const k in (remote.counters || {})) local.counters[k] = Math.max(local.counters[k] || 0, remote.counters[k]);
+    local.visited = Array.from(new Set([...(local.visited || []), ...(remote.visited || [])]));
+    if ((remote.settingsAt || 0) > (local.settingsAt || 0)) { local.settings = { ...DEFAULTS, ...remote.settings }; local.settingsAt = remote.settingsAt; }
+    return local;
+}
+async function pullMerge() {
+    const snap = await fb.db.collection("users").doc(fb.user.uid).get();
+    if (snap.exists) { state = mergeInto(state, snap.data().state); }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+    applySettings(); render();
+    await pushNow();
+}
+function schedulePush() {
+    if (!fb.user || fb.user.gis || !fb.db) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushNow, 2500);
+}
+async function pushNow() {
+    if (!fb.user || fb.user.gis || !fb.db) return;
+    try {
+        await fb.db.collection("users").doc(fb.user.uid).set({
+            name: fb.user.displayName || "", state: JSON.parse(JSON.stringify(state)),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+        fb.status = "Synced at " + new Date().toLocaleTimeString(); refreshAccountUi();
+    } catch (e) { fb.status = "Sync failed: " + (e.code || e.message); refreshAccountUi(); }
+}
+function updateUserBtn() {
+    const b = $("user-btn"); b.innerHTML = "";
+    if (fb.user && fb.user.photoURL) { const i = el("img"); i.src = fb.user.photoURL; i.referrerPolicy = "no-referrer"; i.alt = ""; b.append(i, " " + displayName()); }
+    else b.textContent = "👤 " + displayName();
+}
+function refreshAccountUi() { updateUserBtn(); if (menuOpen() && menuTab === "account") renderMenuPane(); }
+
+/* =====================================================================
+   GOOGLE SIGN-IN (Google Identity Services, no Firebase) + BACKUP CODE
+   Identity only: shows your Google name/photo. Progress stays on this device; use a backup code to move it.
+   ===================================================================== */
+const loginConfigured = fbEnabled || !!GOOGLE_CLIENT_ID;
+let gisReady = false;
+function gisUserFrom(g) { return { displayName:g.name, email:g.email, photoURL:g.picture, uid:g.sub, gis:true }; }
+function jwtPayload(t) {
+    const p = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(atob(p).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+}
+async function initGoogle() {
+    if (!GOOGLE_CLIENT_ID || gisReady) return;
+    try {
+        await loadScript("https://accounts.google.com/gsi/client");
+        google.accounts.id.initialize({ client_id:GOOGLE_CLIENT_ID, callback:onGoogleCred, auto_select:false });
+        gisReady = true; mountGoogleButtons();
+    } catch (e) { fb.status = "Couldn't load Google sign-in (offline or blocked?)."; refreshAccountUi(); }
+}
+function mountGoogleButtons() {
+    if (!gisReady) return;
+    ["wl-gbtn", "acct-gbtn"].forEach(id => {
+        const c = $(id);
+        if (c && !c.firstChild) google.accounts.id.renderButton(c, { theme:"filled_black", size:"large", shape:"pill", text:"signin_with", width:280 });
+    });
+}
+function onGoogleCred(resp) {
+    try {
+        const p = jwtPayload(resp.credential);
+        if (p.aud !== GOOGLE_CLIENT_ID || p.exp * 1000 < Date.now()) throw new Error("bad token");
+        state.google = { name:p.name || p.email, email:p.email, picture:p.picture, sub:p.sub };
+        saveState();
+        fb.user = gisUserFrom(state.google); fb.status = "";
+        toast("☁️", "Signed in", [fb.user.displayName, fb.user.email || ""]);
+        if (welcomeOpen()) finishWelcome();
+        refreshAccountUi(); renderSide(); checkAch();
+    } catch (e) { fb.status = "Google sign-in failed."; refreshAccountUi(); }
+}
+
+function makeBackup() {
+    const c = JSON.parse(JSON.stringify(state)); delete c.google;
+    return "SL1:" + btoa(unescape(encodeURIComponent(JSON.stringify(c))));
+}
+function importBackup(code) {
+    code = (code || "").trim();
+    if (!code.startsWith("SL1:")) return "That doesn't look like a backup code.";
+    let d;
+    try { d = JSON.parse(decodeURIComponent(escape(atob(code.slice(4))))); } catch (e) { return "Couldn't read that code."; }
+    if (!d || typeof d !== "object") return "Couldn't read that code.";
+    const num = v => typeof v === "number" && isFinite(v) && v >= 0;
+    const safe = { ach:{}, launched:{}, counters:{}, visited:[], recent:[], playtime:0 };
+    ACH.forEach(a => { if (d.ach && num(d.ach[a.id])) safe.ach[a.id] = d.ach[a.id]; });
+    ITEMS.forEach(i => { if (d.launched && num(d.launched[i.id])) safe.launched[i.id] = d.launched[i.id]; });
+    Object.keys(state.counters).forEach(k => { if (d.counters && num(d.counters[k])) safe.counters[k] = d.counters[k]; });
+    if (num(d.playtime)) safe.playtime = d.playtime;
+    if (Array.isArray(d.visited)) safe.visited = d.visited.filter(x => Number.isInteger(x) && x >= 0 && x < WORKSPACES.length);
+    if (Array.isArray(d.recent)) safe.recent = d.recent.filter(x => ITEMS.some(i => i.id === x)).slice(0, 5);
+    if (typeof d.name === "string") safe.name = d.name.slice(0, 20);
+    state = mergeInto(state, safe);
+    // settings: whitelist + clamp
+    const s = d.settings || {}, clean = {};
+    for (const k in DEFAULTS) if (typeof s[k] === typeof DEFAULTS[k]) clean[k] = s[k];
+    SCHEMA.forEach(def => { if (def.type === "range" && typeof clean[def.key] === "number") clean[def.key] = Math.min(def.max, Math.max(def.min, clean[def.key])); });
+    if (!THEMES[clean.theme]) clean.theme = DEFAULTS.theme;
+    if (!CLOAKS[clean.cloak]) clean.cloak = "off";
+    if (!/^(#[0-9a-f]{6})?$/i.test(clean.accent || "")) clean.accent = "";
+    if (!["aurora", "grid", "dots", "solid"].includes(clean.wall)) clean.wall = DEFAULTS.wall;
+    if (!["mono", "sans"].includes(clean.font)) clean.font = DEFAULTS.font;
+    if (!["carousel", "grid"].includes(clean.layout)) clean.layout = DEFAULTS.layout;
+    if (!["p", "`", "Delete", "\\"].includes(clean.panic)) clean.panic = DEFAULTS.panic;
+    state.settings = { ...DEFAULTS, ...clean }; state.settingsAt = Date.now();
+    applySettings(); saveState(); render(); renderSide(); checkAch();
+    return "Imported. Progress merged, settings applied.";
+}
+
+/* =====================================================================
+   CAROUSEL
+   ===================================================================== */
+function visible() {
+    const ws = WORKSPACES[curWs], q = query.trim().toLowerCase();
+    return ITEMS.filter(i => (!ws.cats || ws.cats.includes(i.cat)) && (!q || i.title.toLowerCase().includes(q) || i.cat.toLowerCase().includes(q)));
+}
+function renderWs() {
+    const host = $("ws"); host.innerHTML = "";
+    WORKSPACES.forEach((w, i) => {
+        const b = el("button", "ws-btn" + (i === curWs ? " on" : "")); b.textContent = (i + 1) + " " + w.n;
+        b.onclick = () => setWs(i); host.appendChild(b);
+    });
+}
+function setWs(i) {
+    curWs = i; sel = 0;
+    if (!state.visited.includes(i)) { state.visited.push(i); saveState(); }
+    $("ws-name").textContent = WORKSPACES[i].n;
+    renderWs(); render(); checkAch();
+}
+function render() {
+    const list = visible(), track = $("track");
+    if (sel >= list.length) sel = Math.max(0, list.length - 1);
+    track.innerHTML = "";
+    list.forEach((it, i) => {
+        const c = el("div", "card"); c.style.setProperty("--h", hue(it.id));
+        c.innerHTML = '<div class="ic"></div><em></em><span></span><h3></h3>';
+        c.querySelector(".ic").textContent = CAT_ICON[it.cat] || "📦";
+        c.querySelector("span").textContent = it.cat;
+        c.querySelector("h3").textContent = it.title;
+        const n = state.launched[it.id]; if (n) c.querySelector("em").textContent = "×" + n;
+        c.onclick = () => { if (state.settings.layout === "grid" || i === sel) launch(it, false); else { sel = i; updateSel(); } };
+        track.appendChild(c);
+    });
+    $("count").textContent = list.length + (list.length === 1 ? " app" : " apps");
+    if (!list.length) { const e = el("div", "empty"); e.textContent = "No matches."; track.appendChild(e); }
+    updateSel(true);
+}
+function updateSel(instant) {
+    const list = visible(), track = $("track"), stage = $("stage");
+    [...track.children].forEach((c, i) => c.classList.toggle("sel", i === sel));
+    const c = track.children[sel];
+    if (c && list.length) {
+        if (state.settings.layout === "grid") { track.style.transform = ""; c.scrollIntoView({ block:"nearest", inline:"nearest" }); }
+        else {
+            if (instant) { track.style.transition = "none"; }
+            track.style.transform = "translateX(" + (stage.clientWidth / 2 - (c.offsetLeft + c.offsetWidth / 2)) + "px)";
+            if (instant) { void track.offsetWidth; track.style.transition = ""; }
+        }
+    }
+    const it = list[sel], info = $("info");
+    info.innerHTML = "<strong></strong><small></small>";
+    if (it) {
+        info.firstChild.textContent = it.title;
+        const n = state.launched[it.id] || 0;
+        info.lastChild.textContent = it.cat + " · " + (n ? "launched " + n + "×" : "never launched") + " · " + GAMES_DIR + it.file;
+    } else info.firstChild.textContent = "—";
+}
+function move(d) { const n = visible().length; if (!n) return; sel = Math.min(n - 1, Math.max(0, sel + d)); updateSel(); }
+function gridCols() {
+    const k = $("track").children; if (!k.length) return 1; let n = 0;
+    for (const c of k) { if (c.offsetTop === k[0].offsetTop) n++; else break; } return Math.max(1, n);
+}
+
+/* =====================================================================
+   SIDE TILES
+   ===================================================================== */
+function liveSecs() { return curGame ? (Date.now() - gameStart) / 1000 : 0; }
+function displayName() { return (fb.user && fb.user.displayName ? fb.user.displayName.split(" ")[0] : state.name) || "Guest"; }
+let heroKey = "";
+function renderHero() {
+    const hr = new Date().getHours();
+    const g = hr < 5 ? "Burning the midnight oil" : hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
+    const key = g + "|" + displayName() + "|" + ITEMS.length;
+    if (key === heroKey) return; heroKey = key;
+    const box = $("hero"); box.innerHTML = "<h1></h1><p></p>";
+    box.firstChild.append(g + ", ");
+    const b = el("span", "grad"); b.textContent = displayName(); box.firstChild.appendChild(b);
+    box.lastChild.textContent = APP_NAME + " · " + ITEMS.length + " apps ready · press Enter to launch";
+}
+function renderProfile() {
+    const box = $("profile"), done = Object.keys(state.ach).length;
+    box.innerHTML = '<div class="profile-top"><div class="avatar"></div><div><b></b><div class="note" style="margin:2px 0 0"></div></div></div><div class="chips"></div>';
+    const av = box.querySelector(".avatar");
+    if (fb.user && fb.user.photoURL) { const i = el("img"); i.src = fb.user.photoURL; i.referrerPolicy = "no-referrer"; i.alt = ""; av.appendChild(i); }
+    else av.textContent = displayName().charAt(0).toUpperCase();
+    box.querySelector("b").textContent = displayName();
+    box.querySelector(".note").textContent = fb.user ? (fb.user.email || "Signed in") : "Saved on this device";
+    const chips = box.querySelector(".chips");
+    [[totalLaunches(), "Launches"], [fmtDur(state.playtime), "Played"], [done + "/" + ACH.length, "Trophies"]].forEach(([v, l]) => {
+        const c = el("div", "chip"); c.innerHTML = "<b></b><small></small>"; c.firstChild.textContent = v; c.lastChild.textContent = l; chips.appendChild(c); });
+    if (!fb.user) { const b = el("button", "btn profile-btn"); b.textContent = "Sign in with Google"; b.onclick = () => openMenu("account"); box.appendChild(b); }
+}
+function renderRecent() {
+    const box = $("recent"); box.innerHTML = '<div class="sec-title">Recently played</div><div class="list"></div>';
+    const list = box.querySelector(".list");
+    const items = (state.recent || []).map(id => ITEMS.find(i => i.id === id)).filter(Boolean);
+    if (!items.length) { const e = el("div", "note"); e.textContent = "Nothing yet."; list.appendChild(e); }
+    items.forEach(it => {
+        const r = el("div", "recent-item"); r.innerHTML = "<span></span><span></span><small></small>";
+        r.children[0].textContent = CAT_ICON[it.cat] || "📦"; r.children[1].textContent = it.title; r.children[2].textContent = "×" + (state.launched[it.id] || 0);
+        r.onclick = () => launch(it, false); list.appendChild(r); });
+}
+function renderAchMini() {
+    const done = Object.keys(state.ach).length, box = $("ach-mini");
+    box.innerHTML = '<div class="wtitle" style="padding:0 0 8px;border:0"><b>Achievements</b><span class="spacer"></span><span></span></div><div class="bar-track"><div></div></div><div class="list"></div>';
+    box.querySelector(".wtitle span:last-child").textContent = done + "/" + ACH.length;
+    box.querySelector(".bar-track div").style.width = (done / ACH.length * 100) + "%";
+    const list = box.querySelector(".list");
+    const recent = ACH.filter(a => state.ach[a.id]).sort((a, b) => state.ach[b.id] - state.ach[a.id]).slice(0, 4);
+    if (!recent.length) { const e = el("div", "note"); e.textContent = "Nothing yet. Go launch something."; list.appendChild(e); }
+    recent.forEach(a => { const d = el("div", "mini-ach"); d.innerHTML = '<span class="i"></span><div><span></span><small></small></div>';
+        d.querySelector(".i").textContent = a.icon; d.querySelector("div span").textContent = a.name; d.querySelector("small").textContent = a.desc; list.appendChild(d); });
+}
+function renderSide() { updateUserBtn(); renderProfile(); renderRecent(); renderAchMini(); renderHero(); }
+
+/* =====================================================================
+   MENU (ESDE-style)
+   ===================================================================== */
+let menuTab = "settings", padMenu = false;
+const MENU_TABS = [["settings", "⚙  Settings"], ["ach", "🏆  Achievements"], ["account", "☁  Account"], ["about", "ℹ  About"], ["exit", "⏻  Exit Hub"]];
+const menuOpen = () => $("menu").style.display === "flex";
+function openMenu(tab) { menuTab = tab || menuTab; $("menu").style.display = "flex"; renderMenu(); }
+function closeMenu() { $("menu").style.display = "none"; }
+function renderMenu() {
+    const nav = $("menu-nav"); nav.innerHTML = "";
+    MENU_TABS.forEach(([id, label]) => {
+        const b = el("button", id === menuTab ? "on" : ""); b.textContent = label;
+        b.onclick = () => { if (id === "exit") { panic(); return; } menuTab = id; renderMenu(); };
+        nav.appendChild(b);
+    });
+    renderMenuPane();
+    if (padMenu) { const on = document.querySelector("#menu-nav .on"); if (on) on.focus(); }
+}
+function renderMenuPane() {
+    const pane = $("menu-pane"); pane.innerHTML = "";
+    $("menu-title").textContent = (MENU_TABS.find(t => t[0] === menuTab) || [0, menuTab])[1].replace(/^\S+\s+/, "");
+    if (menuTab === "settings") renderSettings(pane);
+    else if (menuTab === "ach") renderAchievements(pane);
+    else if (menuTab === "account") renderAccount(pane);
+    else renderAbout(pane);
+}
+function renderSettings(pane) {
+    SCHEMA.forEach(def => {
+        if (def.section) { const h = el("h3"); h.textContent = def.section; pane.appendChild(h); return; }
+        const row = el("div", "row"), lab = el("label"); lab.textContent = def.label; row.appendChild(lab);
+        const val = state.settings[def.key]; let ctl;
+        if (def.type === "select") {
+            ctl = el("select");
+            def.options.forEach(([v, n]) => { const o = el("option"); o.value = v; o.textContent = n; if (v === val) o.selected = true; ctl.appendChild(o); });
+            ctl.onchange = () => setSetting(def.key, ctl.value);
+        } else if (def.type === "range") {
+            ctl = el("div", "range");
+            const inp = el("input"), out = el("output");
+            inp.type = "range"; inp.min = def.min; inp.max = def.max; inp.value = val; out.textContent = val + def.unit;
+            inp.oninput = () => { out.textContent = inp.value + def.unit; setSetting(def.key, +inp.value, false); };
+            inp.onchange = () => setSetting(def.key, +inp.value, true);
+            ctl.append(inp, out);
+        } else if (def.type === "toggle") {
+            ctl = el("input", "sw"); ctl.type = "checkbox"; ctl.checked = !!val;
+            ctl.onchange = () => setSetting(def.key, ctl.checked);
+        } else if (def.type === "swatch") {
+            ctl = el("div", "swatches");
+            SWATCHES.forEach(c => { const b = el("button", c === val ? "on" : ""); if (c) b.style.background = c; else b.textContent = "⟲"; b.title = c || "Theme default";
+                b.onclick = () => { setSetting("accent", c); renderMenuPane(); }; ctl.appendChild(b); });
+        }
+        row.appendChild(ctl); pane.appendChild(row);
+    });
+    const r = el("div", "row"); const b = el("button", "btn"); b.textContent = "Reset all settings";
+    b.onclick = () => { state.settings = { ...DEFAULTS }; state.settingsAt = Date.now(); applySettings(); saveState(); renderMenuPane(); };
+    r.appendChild(b); pane.appendChild(r);
+}
+function renderAchievements(pane) {
+    const done = Object.keys(state.ach).length;
+    pane.innerHTML = "<h2></h2><div class='bar-track'><div></div></div><div class='ach-grid'></div>";
+    pane.querySelector("h2").textContent = done + " / " + ACH.length + " unlocked";
+    pane.querySelector(".bar-track div").style.width = (done / ACH.length * 100) + "%";
+    const g = pane.querySelector(".ach-grid");
+    ACH.forEach(a => {
+        const got = state.ach[a.id], d = el("div", "ach " + (got ? "done" : "locked"));
+        d.innerHTML = '<div class="i"></div><div><b></b><small></small><small class="when"></small></div>';
+        d.querySelector(".i").textContent = got ? a.icon : "🔒";
+        d.querySelector("b").textContent = a.name;
+        d.querySelector("small").textContent = a.desc;
+        d.querySelector(".when").textContent = got ? new Date(got).toLocaleDateString() : "";
+        g.appendChild(d);
+    });
+}
+function renderAccount(pane) {
+    pane.innerHTML = "<h2>Account</h2>";
+    const nr = el("div", "row"); nr.innerHTML = "<label>Display name</label>";
+    const ni = el("input"); ni.type = "text"; ni.maxLength = 20; ni.placeholder = "Your name"; ni.value = state.name || "";
+    ni.onchange = () => { state.name = ni.value.trim().slice(0, 20); state.settingsAt = Date.now(); saveState(); renderSide(); renderHero(); };
+    nr.appendChild(ni); pane.appendChild(nr);
+
+    if (fb.user) {
+        const card = el("div", "account-card");
+        card.innerHTML = "<img alt=''><div><b></b><div class='note'></div></div>";
+        const img = card.querySelector("img"); if (fb.user.photoURL) { img.src = fb.user.photoURL; img.referrerPolicy = "no-referrer"; } else img.remove();
+        card.querySelector("b").textContent = fb.user.displayName || "Signed in";
+        card.querySelector(".note").textContent = fb.user.email || "";
+        pane.appendChild(card);
+        if (fb.db && !fb.user.gis) { const sync = el("button", "btn"); sync.textContent = "Sync now"; sync.onclick = pushNow; pane.append(sync, " "); }
+        const out = el("button", "btn"); out.textContent = "Sign out"; out.onclick = signOut; pane.appendChild(out);
+        if (fb.user.gis) { const n = el("p", "note"); n.textContent = "Progress is saved on this device. Use a backup code below to move it to another one."; pane.appendChild(n); }
+    } else if (GOOGLE_CLIENT_ID) {
+        if (location.protocol === "file:") pane.insertAdjacentHTML("beforeend", "<p class='note'>Google sign-in needs the page hosted over http(s) or <code>localhost</code>, not opened as a file.</p>");
+        const p = el("p", "note"); p.textContent = "Sign in to show your Google name and photo.";
+        const box = el("div"); box.id = "acct-gbtn"; pane.append(p, box); mountGoogleButtons();
+    } else if (fbEnabled) {
+        if (location.protocol === "file:") pane.insertAdjacentHTML("beforeend", "<p class='note'>Google sign-in needs the page hosted over http(s) or <code>localhost</code>, not opened as a file.</p>");
+        const p = el("p", "note"); p.textContent = "Sign in to keep achievements, play stats and settings across devices.";
+        const b = el("button", "btn google"); b.textContent = "Sign in with Google"; b.onclick = signIn; pane.append(p, b);
+    } else {
+        pane.insertAdjacentHTML("beforeend",
+            "<p class='note'>Google sign-in isn't set up yet, so you're using a local profile. To turn it on (no Firebase needed):</p>" +
+            "<p class='note'>1. Google Cloud Console → <code>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</code> (type: Web application; fill in the consent screen if asked).<br>" +
+            "2. Under <code>Authorized JavaScript origins</code> add the exact address you open this page from, e.g. <code>https://yoursite.com</code> or <code>http://localhost:8000</code>.<br>" +
+            "3. Paste the Client ID into <code>GOOGLE_CLIENT_ID</code> at the top of the script.</p>");
+    }
+    if (fb.status) { const s = el("p", "note"); s.textContent = fb.status; pane.appendChild(s); }
+
+    const h3 = el("h3"); h3.textContent = "Backup & transfer"; pane.appendChild(h3);
+    const bn = el("p", "note"); bn.textContent = "Export a code to move achievements, stats and settings to another browser or device, then paste it there and Import."; pane.appendChild(bn);
+    const ta = el("textarea"); ta.rows = 4; ta.placeholder = "Backup code appears here, or paste one to import"; pane.appendChild(ta);
+    const msg = el("p", "note");
+    const ex = el("button", "btn"); ex.textContent = "Export"; ex.onclick = () => { ta.value = makeBackup(); ta.select(); msg.textContent = "Code ready. Copy it."; };
+    const cp = el("button", "btn"); cp.textContent = "Copy"; cp.style.marginLeft = "8px";
+    cp.onclick = () => { if (!ta.value) ta.value = makeBackup(); ta.select(); try { navigator.clipboard.writeText(ta.value).then(() => { msg.textContent = "Copied."; }, () => { document.execCommand("copy"); msg.textContent = "Copied."; }); } catch (e) { document.execCommand("copy"); msg.textContent = "Copied."; } };
+    const im = el("button", "btn"); im.textContent = "Import"; im.style.marginLeft = "8px"; im.onclick = () => { msg.textContent = importBackup(ta.value); };
+    pane.append(ex, cp, im, msg);
+}
+function renderAbout(pane) {
+    pane.innerHTML = "<h2>" + APP_NAME + "</h2><p class='note'>Author: <b>Jules Nguyen</b></p>" +
+        "<h3>Shortcuts</h3><div class='note'><kbd>←</kbd> <kbd>→</kbd> browse · <kbd>↑</kbd> <kbd>↓</kbd> rows in grid · <kbd>Enter</kbd> launch<br>" +
+        "<kbd>1</kbd>–<kbd>4</kbd> switch workspace · <kbd>/</kbd> search · <kbd>M</kbd> menu · <kbd>Esc</kbd> close<br>Panic key: set in Settings → Privacy</div>";
+}
+
+/* =====================================================================
+   LAUNCH / GAME WINDOW
+   ===================================================================== */
+function launch(it, viaKey) {
+    state.launched[it.id] = (state.launched[it.id] || 0) + 1;
+    state.recent = [it.id, ...(state.recent || []).filter(x => x !== it.id)].slice(0, 5);
+    if (viaKey) state.counters.keyLaunch++;
+    openGame(GAMES_DIR + it.file, it);
+}
+function openGame(url, it) {
+    musicWasPlaying = !music.paused;
+    try { music.pause(); } catch (e) {}
+    curGame = it; gameStart = Date.now();
+    $("current-title").textContent = "RUNNING: " + it.name;
+    $("game-frame").src = url;
+    $("game-overlay").style.display = "block";
+    saveState(); checkAch();
+}
+function endSession() {
+    if (curGame) { state.playtime += Math.round((Date.now() - gameStart) / 1000); curGame = null; saveState(); }
+}
+function closeGame() {
+    endSession();
+    $("game-overlay").style.display = "none";
+    $("game-overlay").classList.remove("full");
+    $("game-frame").src = "about:blank";
+    if (musicWasPlaying) { music.play().catch(() => {}); }
+    musicWasPlaying = false;
+    render(); renderSide(); checkAch();
+}
+$("full-btn").addEventListener("click", () => $("game-overlay").classList.toggle("full"));
+
+/* =====================================================================
+   WELCOME / NAME / GOOGLE SIGN-IN SCREEN
+   ===================================================================== */
+const welcomeEl = $("welcome");
+const welcomeOpen = () => welcomeEl.style.display === "flex";
+function showWelcome() {
+    const lock = REQUIRE_LOGIN && loginConfigured;
+    const gis = !!GOOGLE_CLIENT_ID;
+    $("wl-google").style.display = gis ? "none" : "";
+    $("wl-gbtn").style.display = gis ? "flex" : "none";
+    mountGoogleButtons();
+    $("wl-guest").style.display = lock ? "none" : "";
+    $("wl-name").style.display = lock ? "none" : "";
+    document.querySelector("#welcome .or").style.display = lock ? "none" : "";
+    $("wl-name").value = state.name || "";
+    $("wl-note").textContent = "";
+    welcomeEl.style.display = "flex";
+    setTimeout(() => { if (!lock) $("wl-name").focus(); }, 50);
+}
+function finishWelcome() {
+    welcomeEl.style.display = "none";
+    state.onboarded = true; saveState();
+    renderSide(); renderHero();
+    toast("✦", "Welcome to " + APP_NAME, [displayName(), "Press M for settings"]);
+}
+$("wl-google").addEventListener("click", () => {
+    const note = $("wl-note");
+    if (!fbEnabled) { note.textContent = "Google sign-in isn't set up yet. Add a Google Client ID (GOOGLE_CLIENT_ID at the top of the script), or pick a name and continue for now."; return; }
+    if (location.protocol === "file:") { note.textContent = "Google sign-in needs the page hosted over http(s) or localhost, not opened as a file."; return; }
+    note.textContent = "Opening Google sign-in…"; signIn().then(() => { if (!fb.user && fb.status) note.textContent = fb.status; });
+});
+function welcomeContinue() {
+    const n = $("wl-name").value.trim();
+    if (!n) { $("wl-note").textContent = "Enter a name first."; $("wl-name").focus(); return; }
+    state.name = n.slice(0, 20); state.settingsAt = Date.now(); finishWelcome();
+}
+$("wl-guest").addEventListener("click", welcomeContinue);
+$("wl-name").addEventListener("keydown", e => { if (e.key === "Enter") welcomeContinue(); });
+
+/* =====================================================================
+   DECOY / PASSWORD / PANIC
+   ===================================================================== */
+const passwordModal = $("password-modal");
+const passwordInput = $("password-input");
+const passwordError = $("password-error");
+const togglePassword = $("toggle-password");
+
+function setWrongPasswordCookie() {
+    document.cookie = "launcher_wrong_password=1; max-age=" + (60 * 60 * 24 * 30) + "; path=/; SameSite=Lax";
+}
+function showChapter(num, clickedItem) {
+    document.querySelectorAll(".chapter").forEach(c => c.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("nav-active"));
+    $("ch" + num).classList.add("active");
+    clickedItem.classList.add("nav-active");
+}
+function unlockLauncher() {
+    passwordInput.value = ""; passwordInput.type = "password"; passwordError.textContent = "";
+    togglePassword.textContent = "👁"; togglePassword.title = "Show password"; togglePassword.setAttribute("aria-label", "Show password");
+    passwordModal.style.display = "flex";
+    setTimeout(() => passwordInput.focus(), 0);
+}
+function closePasswordModal() { passwordModal.style.display = "none"; passwordInput.value = ""; passwordError.textContent = ""; }
+function submitPassword() {
+    if (passwordInput.value !== correctPassword) { setWrongPasswordCookie(); window.location.replace(wrongPasswordRedirect); return; }
+    passwordModal.style.display = "none"; passwordInput.value = "";
+    $("book-decoy").style.display = "none";
+    $("main-launcher").style.display = "flex";
+    unlocked = true; sessionStart = Date.now();
+    applySettings(); renderWs(); render(); renderSide(); refreshAccountUi();
+    requestAnimationFrame(() => updateSel(true));
+    try { music.play().catch(() => {}); } catch (e) {}
+    checkAch();
+    initFirebase();
+    initGoogle();
+    if (!state.onboarded || (REQUIRE_LOGIN && loginConfigured && !fb.user)) showWelcome();
+}
+function panic() {
+    state.counters.panics++;
+    endSession();
+    closePasswordModal(); closeMenu(); welcomeEl.style.display = "none";
+    unlocked = false;
+    $("book-decoy").style.display = "flex";
+    $("main-launcher").style.display = "none";
+    $("game-overlay").style.display = "none";
+    $("game-overlay").classList.remove("full");
+    $("game-frame").src = "about:blank";
+    musicWasPlaying = false;
+    try { music.pause(); } catch (e) {}
+    saveState();
+    unlocked = true; checkAch(); unlocked = false;   // award panic achievement silently for next session
+}
+
+$("submit-password").addEventListener("click", submitPassword);
+$("cancel-password").addEventListener("click", closePasswordModal);
+togglePassword.addEventListener("click", () => {
+    const hidden = passwordInput.type === "password";
+    passwordInput.type = hidden ? "text" : "password";
+    togglePassword.textContent = hidden ? "🙈" : "👁";
+    togglePassword.title = hidden ? "Hide password" : "Show password";
+    togglePassword.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+    passwordInput.focus();
+});
+passwordInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") submitPassword();
+    if (e.key === "Escape") closePasswordModal();
+});
+
+/* =====================================================================
+   WIRING
+   ===================================================================== */
+musicBtn.addEventListener("click", () => {
+    if (music.paused) { music.play().catch(() => {}); state.counters.music++; saveState(); checkAch(); } else { music.pause(); }
+});
+music.addEventListener("play",  () => { musicBtn.textContent = "⏸ Pause"; });
+music.addEventListener("pause", () => { musicBtn.textContent = "▶ Play"; });
+
+$("menu-btn").addEventListener("click", () => openMenu("settings"));
+$("user-btn").addEventListener("click", () => openMenu("account"));
+$("ach-mini").addEventListener("click", () => openMenu("ach"));
+$("menu-close").addEventListener("click", closeMenu);
+$("menu").addEventListener("mousedown", e => { if (e.target === $("menu")) closeMenu(); });
+
+const searchEl = $("search");
+searchEl.addEventListener("input", () => {
+    query = searchEl.value; sel = 0; render();
+    if (query && !state.counters.searches) { state.counters.searches = 1; saveState(); checkAch(); }
+});
+searchEl.addEventListener("keydown", e => {
+    if (e.key === "Escape") { searchEl.value = ""; query = ""; searchEl.blur(); render(); }
+    if (e.key === "Enter") { const it = visible()[sel]; searchEl.blur(); if (it) launch(it, true); }
+    if (e.key === "ArrowRight") { e.preventDefault(); move(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); move(-1); }
+});
+
+let wheelLock = 0;
+$("stage").addEventListener("wheel", e => {
+    if (state.settings.layout === "grid") return;
+    e.preventDefault();
+    const now = Date.now(); if (now - wheelLock < 110) return; wheelLock = now;
+    move((e.deltaY || e.deltaX) > 0 ? 1 : -1);
+}, { passive:false });
+let touchX = null;
+$("stage").addEventListener("touchstart", e => { touchX = e.touches[0].clientX; }, { passive:true });
+$("stage").addEventListener("touchend", e => {
+    if (touchX === null || state.settings.layout === "grid") return;
+    const dx = e.changedTouches[0].clientX - touchX; touchX = null;
+    if (Math.abs(dx) > 45) move(dx < 0 ? 1 : -1);
+});
+window.addEventListener("resize", () => { if (unlocked) updateSel(true); });
+
+window.addEventListener("keydown", e => {
+    const open = $("main-launcher").style.display === "flex"; if (!open) return;
+    const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+    const mod = e.ctrlKey || e.metaKey || e.altKey;
+    if (!typing && !mod && e.key.toLowerCase() === state.settings.panic.toLowerCase()) { panic(); return; }
+    if (e.key === "Escape") { if (menuOpen()) closeMenu(); else if (curGame) closeGame(); return; }
+    if (typing || mod || curGame || menuOpen() || welcomeOpen()) return;
+    const k = e.key;
+    if (k === "ArrowRight") { e.preventDefault(); move(1); }
+    else if (k === "ArrowLeft") { e.preventDefault(); move(-1); }
+    else if (k === "ArrowDown" && state.settings.layout === "grid") { e.preventDefault(); move(gridCols()); }
+    else if (k === "ArrowUp" && state.settings.layout === "grid") { e.preventDefault(); move(-gridCols()); }
+    else if (k === "Home") { sel = 0; updateSel(); }
+    else if (k === "End") { sel = Math.max(0, visible().length - 1); updateSel(); }
+    else if (k === "Enter") { const it = visible()[sel]; if (it) launch(it, true); }
+    else if (k === "/") { e.preventDefault(); searchEl.focus(); }
+    else if (k.toLowerCase() === "m" || k === "Tab") { e.preventDefault(); openMenu("settings"); }
+    else if (/^[1-4]$/.test(k)) setWs(+k - 1);
+});
+
+/* =====================================================================
+   GAMEPAD
+   Hub:  D-pad/stick browse · A launch · B clear search · LB/RB workspace · Y/Start menu · hold Select = panic
+   Menu: D-pad/stick move & adjust · A press · B/Y/Start close · LB/RB switch tab
+   Game: hold Select+Start = back to hub (all other input goes to the game)
+   ===================================================================== */
+const padPrev = {}, padRep = {};
+let selectHeld = 0, comboHeld = 0, padLock = false;
+window.addEventListener("gamepadconnected", e => {
+    $("pad-hint").style.display = "";
+    if (!state.counters.pad) { state.counters.pad = 1; saveState(); }
+    if (unlocked) { toast("🎮", "Controller connected", [e.gamepad.id.slice(0, 36), "A launch · B back · Y menu"]); checkAch(); }
+});
+window.addEventListener("gamepaddisconnected", () => {
+    if (![...navigator.getGamepads()].some(Boolean)) $("pad-hint").style.display = "none";
+});
+function menuPad(cur, press, dir) {
+    padMenu = true;
+    const f = [...$("menu").querySelectorAll("button, select, input")].filter(e => e.offsetParent !== null && !e.disabled);
+    const i = f.indexOf(document.activeElement);
+    const U = dir("up"), D = dir("down"), L = dir("left"), R = dir("right");
+    if (D && f.length) f[(i + 1) % f.length].focus();
+    if (U && f.length) f[i <= 0 ? f.length - 1 : i - 1].focus();
+    const a = document.activeElement;
+    if ((L || R) && a) {
+        const d = R ? 1 : -1;
+        if (a.type === "range") {
+            const st = Math.max(1, Math.round((a.max - a.min) / 20));
+            a.value = Math.min(+a.max, Math.max(+a.min, +a.value + d * st));
+            a.dispatchEvent(new Event("input", { bubbles:true })); a.dispatchEvent(new Event("change", { bubbles:true }));
+        } else if (a.tagName === "SELECT") {
+            const n = a.selectedIndex + d;
+            if (n >= 0 && n < a.options.length) { a.selectedIndex = n; a.dispatchEvent(new Event("change", { bubbles:true })); }
+        }
+    }
+    if (press("a") && a && (a.tagName === "BUTTON" || a.type === "checkbox")) a.click();
+    if (press("b") || press("start") || press("y")) closeMenu();
+    const tabs = MENU_TABS.map(t => t[0]).filter(t => t !== "exit"), k = tabs.indexOf(menuTab);
+    if (press("lb")) { menuTab = tabs[(k + tabs.length - 1) % tabs.length]; renderMenu(); }
+    if (press("rb")) { menuTab = tabs[(k + 1) % tabs.length]; renderMenu(); }
+}
+function handlePad(gp, ts) {
+    const bt = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
+    const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+    const cur = { a:bt(0), b:bt(1), x:bt(2), y:bt(3), lb:bt(4), rb:bt(5), sel:bt(8), start:bt(9),
+        up:bt(12) || ay < -0.6, down:bt(13) || ay > 0.6, left:bt(14) || ax < -0.6, right:bt(15) || ax > 0.6 };
+    const prev = padPrev[gp.index] || {}, rep = padRep[gp.index] || (padRep[gp.index] = {});
+    padPrev[gp.index] = cur;
+    const press = k => cur[k] && !prev[k];
+    const dir = k => {
+        if (!cur[k]) { rep[k] = 0; return false; }
+        if (!prev[k]) { rep[k] = ts + 380; return true; }
+        if (ts >= rep[k]) { rep[k] = ts + 130; return true; }
+        return false;
+    };
+    if (welcomeOpen()) return;
+    if (padLock) { if (cur.sel || cur.start) return; padLock = false; }
+    if (curGame) {
+        if (cur.sel && cur.start) { comboHeld = comboHeld || ts; if (ts - comboHeld > 800) { comboHeld = 0; padLock = true; closeGame(); } }
+        else comboHeld = 0;
+        return;
+    }
+    if (cur.sel && !cur.start) { selectHeld = selectHeld || ts; if (ts - selectHeld > 1000) { selectHeld = 0; padLock = true; panic(); return; } }
+    else selectHeld = 0;
+    if (menuOpen()) { menuPad(cur, press, dir); return; }
+    if (press("lb")) setWs((curWs + WORKSPACES.length - 1) % WORKSPACES.length);
+    if (press("rb")) setWs((curWs + 1) % WORKSPACES.length);
+    const R = dir("right"), L = dir("left"), D = dir("down"), U = dir("up");
+    if (R) move(1);
+    if (L) move(-1);
+    if (state.settings.layout === "grid") { if (D) move(gridCols()); if (U) move(-gridCols()); }
+    if (press("a")) { const it = visible()[sel]; if (it) launch(it, true); }
+    if (press("b") && query) { searchEl.value = ""; query = ""; sel = 0; render(); }
+    if (press("y") || press("start")) { padMenu = true; openMenu("settings"); }
+}
+function padLoop(ts) {
+    requestAnimationFrame(padLoop);
+    if (!unlocked || !navigator.getGamepads) return;
+    for (const gp of navigator.getGamepads()) if (gp) handlePad(gp, ts);
+}
+
+function tick() {
+    const d = new Date(), s = state.settings;
+    const time = d.toLocaleTimeString([], Object.assign({ hour:"2-digit", minute:"2-digit", hour12:!s.h24 }, s.secs ? { second:"2-digit" } : {}));
+    $("clock").textContent = d.toLocaleDateString([], { weekday:"short", month:"short", day:"numeric" }) + "  ·  " + time;
+    if (unlocked) renderHero();
+}
+setInterval(tick, 1000);
+requestAnimationFrame(padLoop);
+if (state.google && !fb.user) fb.user = gisUserFrom(state.google);
+$("brand-name").textContent = APP_NAME.toUpperCase();
+$("wl-title").textContent = APP_NAME.toUpperCase();
+document.querySelectorAll(".app-name").forEach(e => { e.textContent = APP_NAME.toLowerCase(); });
+applySettings();   // applies tab cloak + theme even while the decoy is showing
+</script>
+</body>
+</html>
