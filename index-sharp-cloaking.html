@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>
+// ================= EDIT THESE TWO SETTINGS =================
+const correctPassword = "_Sunnymelon22"; // Launcher password.
+const MUSIC_BASE64 = "PASTE_BASE64_HERE"; // MP3 base64 only; no data: prefix.
+// ==========================================================
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics 101</title>
+<link rel="icon" type="image/png" href="icon.png">
+
+<script>
+    // Runs before the page shows: previously wrong password -> redirect (local page)
+    (function () {
+        if (document.cookie.includes("launcher_wrong_password=1")) {
+            window.location.replace("haha.html");
+        }
+    })();
+</script>
+
+<style>
+:root {
+    --bg:#11111b; --base:#1e1e2e; --surface:#313244; --text:#cdd6f4; --muted:#a6adc8;
+    --accent:#cba6f7; --accent2:#89b4fa; --red:#f38ba8; --green:#a6e3a1; --yellow:#f9e2af; --inactive:#45475a;
+    --win-bg:rgba(30,30,46,.82);
+    --gap:12px; --bw:2px; --radius:12px; --blur:14px; --bar-h:40px;
+    --font:"JetBrains Mono","JetBrainsMono Nerd Font","Fira Code","Cascadia Code",ui-monospace,monospace;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; padding:0; min-height:100%; background:var(--bg); color:#fff; font-family:"Segoe UI",sans-serif; overflow-x:hidden; overflow-y:auto; }
+body.noanim *, body.noanim *::before, body.noanim *::after { transition:none !important; animation:none !important; }
+
+/* ================= Decoy textbook ================= */
+#book-decoy { position:fixed; inset:0; z-index:9999; display:flex; background:#fdfdfd; color:#333; font-family:Georgia,serif; }
+.book-sidebar { display:flex; flex-direction:column; width:260px; padding:40px 20px; background:#ececec; border-right:2px solid #ccc; }
+.book-sidebar h2 { margin:0 0 20px; padding-bottom:10px; font-size:1.1rem; border-bottom:2px solid #333; }
+.nav-item { margin-bottom:5px; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold; transition:.2s; }
+.nav-item:hover { background:#d0d0d0; }
+.nav-active { background:#333 !important; color:#fff; }
+.book-content { flex-grow:1; overflow-y:auto; padding:60px; color:#333; line-height:1.8; }
+.chapter { display:none; max-width:800px; margin:0 auto; }
+.chapter.active { display:block; }
+.equation { margin:20px 0; padding:15px; background:#f4f4f4; border:1px solid #ddd; border-radius:5px; text-align:center; font-family:serif; font-size:1.2rem; }
+#secret-trigger { margin-top:auto; color:#bbb; cursor:pointer; font-size:.7rem; text-align:center; user-select:none; }
+
+#password-modal { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.48); }
+.password-box { width:min(360px,calc(100vw - 40px)); padding:24px; background:#fff; color:#222; border-radius:12px; box-shadow:0 16px 45px rgba(0,0,0,.42); font-family:"Segoe UI",sans-serif; }
+.password-box h2 { margin:0 0 8px; font-size:1.25rem; }
+.password-box p { margin:0 0 14px; color:#555; font-size:.9rem; }
+.password-row { display:flex; gap:8px; }
+#password-input { flex:1; min-width:0; padding:11px 12px; border:1px solid #aaa; border-radius:7px; outline:none; font-size:1rem; }
+#password-input:focus { border-color:#ff7700; box-shadow:0 0 0 3px rgba(255,119,0,.18); }
+#toggle-password { width:48px; border:1px solid #aaa; border-radius:7px; background:#f4f4f4; cursor:pointer; font-size:1.05rem; }
+.password-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+.password-actions button { padding:9px 14px; border-radius:7px; cursor:pointer; font-weight:700; }
+#cancel-password { border:1px solid #aaa; background:#fff; color:#333; }
+#submit-password { border:1px solid #333; background:#333; color:#fff; }
+
+/* ================= Launcher shell ================= */
+#main-launcher, #menu, #game-overlay, #toasts { font-family:var(--font); color:var(--text); }
+#main-launcher { display:none; flex-direction:column; position:relative; height:100vh; width:100%; overflow:hidden; background:var(--bg); }
+
+#wallpaper { position:fixed; inset:0; z-index:0; background:var(--bg); transition:background .4s; }
+body[data-wall="aurora"] #wallpaper {
+    background:
+        radial-gradient(60vmax 40vmax at 12% 8%, color-mix(in srgb,var(--accent) 32%,transparent), transparent 62%),
+        radial-gradient(55vmax 45vmax at 92% 92%, color-mix(in srgb,var(--accent2) 28%,transparent), transparent 62%),
+        var(--bg); }
+body[data-wall="grid"] #wallpaper {
+    background-color:var(--bg);
+    background-image:
+        linear-gradient(color-mix(in srgb,var(--accent) 12%,transparent) 1px,transparent 1px),
+        linear-gradient(90deg,color-mix(in srgb,var(--accent) 12%,transparent) 1px,transparent 1px);
+    background-size:42px 42px; }
+body[data-wall="dots"] #wallpaper {
+    background-color:var(--bg);
+    background-image:radial-gradient(color-mix(in srgb,var(--accent2) 30%,transparent) 1.5px,transparent 1.7px);
+    background-size:26px 26px; }
+body[data-wall="solid"] #wallpaper { background:var(--bg); }
+
+/* Hyprland-style window: gradient active border, inactive grey border, gaps, rounding, blur */
+.win { position:relative; display:flex; flex-direction:column; border-radius:var(--radius); background:var(--win-bg);
+    backdrop-filter:blur(var(--blur)); -webkit-backdrop-filter:blur(var(--blur)); box-shadow:0 10px 32px rgba(0,0,0,.35); overflow:hidden; }
+.win::before { content:""; position:absolute; inset:0; z-index:20; pointer-events:none; border-radius:inherit; padding:var(--bw);
+    background:var(--inactive); transition:background .25s;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask-composite:exclude; }
+.win:hover::before, .win:focus-within::before, .win.active::before { background:linear-gradient(45deg,var(--accent),var(--accent2),var(--accent)); }
+.wtitle { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:.8rem; color:var(--muted); border-bottom:1px solid color-mix(in srgb,var(--inactive) 70%,transparent); flex:none; }
+.wtitle b { color:var(--accent); }
+.wtitle .spacer { flex:1; }
+.dots { display:flex; gap:6px; }
+.dots i { width:10px; height:10px; border-radius:50%; background:var(--red); }
+.dots i:nth-child(2) { background:var(--yellow); } .dots i:nth-child(3) { background:var(--green); }
+.wbtn { background:transparent; border:1px solid var(--inactive); color:var(--text); border-radius:6px; padding:3px 10px; cursor:pointer; font:inherit; font-size:.75rem; }
+.wbtn:hover { border-color:var(--accent); color:var(--accent); }
+.wbtn.red { border-color:var(--red); color:var(--red); } .wbtn.red:hover { background:color-mix(in srgb,var(--red) 20%,transparent); }
+
+/* Waybar */
+#bar { position:relative; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:var(--gap); margin:var(--gap) var(--gap) 0; }
+.pill { display:flex; align-items:center; gap:8px; height:var(--bar-h); padding:0 14px; border-radius:var(--radius);
+    background:var(--win-bg); backdrop-filter:blur(var(--blur)); border:var(--bw) solid var(--inactive); color:var(--text); font:inherit; font-size:.85rem; }
+button.pill { cursor:pointer; transition:.2s; }
+button.pill:hover { border-color:var(--accent); color:var(--accent); }
+.bar-right { display:flex; gap:var(--gap); }
+#ws { display:flex; gap:4px; padding:0 6px; }
+.ws-btn { border:0; background:transparent; color:var(--muted); font:inherit; font-size:.8rem; padding:5px 11px; border-radius:calc(var(--radius) - 4px); cursor:pointer; transition:.2s; }
+.ws-btn:hover { color:var(--text); background:color-mix(in srgb,var(--accent) 15%,transparent); }
+.ws-btn.on { background:linear-gradient(45deg,var(--accent),var(--accent2)); color:var(--bg); font-weight:700; }
+#clock { color:var(--accent); font-weight:700; letter-spacing:.5px; }
+#user-btn img { width:22px; height:22px; border-radius:50%; }
+
+/* Desktop tiling */
+#desktop { position:relative; z-index:1; flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:var(--gap); padding:var(--gap); }
+.side { display:flex; flex-direction:column; gap:var(--gap); min-height:0; overflow-y:auto; }
+#profile, #recent { flex:none; }
+#ach-mini { flex:1; min-height:0; cursor:pointer; }
+.pad { padding:14px 16px; }
+
+/* ESDE-style carousel */
+.esde { min-height:0; }
+.stage { position:relative; flex:1; min-height:0; overflow:hidden; display:flex; align-items:center; }
+.track { position:absolute; left:0; display:flex; gap:22px; transition:transform .38s cubic-bezier(.2,.8,.2,1); will-change:transform; }
+.card { position:relative; flex:none; width:190px; height:250px; padding:18px; display:flex; flex-direction:column; justify-content:flex-end; gap:4px; text-align:left;
+    border-radius:calc(var(--radius) + 2px); cursor:pointer; overflow:hidden;
+    background:linear-gradient(160deg,hsl(var(--h) 38% 24%),hsl(var(--h) 45% 12%));
+    border:2px solid transparent; opacity:.5; transform:scale(.9); transition:transform .3s,opacity .3s,border-color .3s,box-shadow .3s; }
+.card .ic { position:absolute; top:22px; left:0; right:0; text-align:center; font-size:64px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+.card h3 { margin:0; font-size:1.1rem; }
+.card span { color:var(--accent); font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+.card em { position:absolute; top:10px; right:12px; font-style:normal; font-size:.7rem; color:var(--muted); }
+.card.sel { opacity:1; transform:scale(1.12); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent2), 0 12px 40px color-mix(in srgb,var(--accent) 40%,transparent); z-index:2; }
+.stage.grid { align-items:flex-start; overflow-y:auto; padding:18px; }
+.stage.grid .track { position:static; flex-wrap:wrap; justify-content:center; transform:none !important; gap:16px; width:100%; }
+.stage.grid .card { width:150px; height:170px; opacity:.85; transform:none; }
+.stage.grid .card .ic { font-size:44px; top:16px; }
+.stage.grid .card.sel { transform:scale(1.05); }
+.empty { margin:auto; color:var(--muted); }
+#info { flex:none; padding:10px 18px; text-align:center; border-top:1px solid color-mix(in srgb,var(--inactive) 70%,transparent); }
+#info strong { font-size:1.15rem; color:var(--accent); }
+#info small { display:block; color:var(--muted); margin-top:2px; }
+.helpbar { flex:none; display:flex; flex-wrap:wrap; justify-content:center; gap:6px 16px; padding:8px 14px 12px; color:var(--muted); font-size:.72rem; }
+kbd { background:var(--surface); border:1px solid var(--inactive); border-bottom-width:2px; border-radius:5px; padding:1px 6px; color:var(--text); font:inherit; }
+#search { width:150px; background:var(--surface); border:1px solid var(--inactive); color:var(--text); border-radius:6px; padding:3px 9px; font:inherit; font-size:.75rem; outline:none; }
+#search:focus { border-color:var(--accent); }
+
+/* neofetch tile */
+
+.bar-track { height:6px; border-radius:6px; background:var(--surface); overflow:hidden; margin:6px 0 10px; }
+.bar-track div { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .4s; }
+.mini-ach { display:flex; gap:10px; align-items:center; padding:5px 0; font-size:.78rem; }
+.mini-ach .i { font-size:1.2rem; } .mini-ach small { color:var(--muted); display:block; }
+
+/* game window */
+#game-overlay { position:fixed; inset:calc(var(--gap)*2 + var(--bar-h)) var(--gap) var(--gap) var(--gap); z-index:1000; display:none; }
+#game-overlay.full { inset:0; }
+#game-overlay .win { height:100%; width:100%; }
+#game-frame { flex:1; width:100%; border:0; background:#000; }
+
+/* menu */
+#menu { position:fixed; inset:0; z-index:2000; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); }
+.menu-win { width:min(940px,94vw); height:min(640px,90vh); }
+.menu-body { flex:1; display:flex; min-height:0; }
+.menu-nav { width:200px; flex:none; padding:12px; display:flex; flex-direction:column; gap:6px; border-right:1px solid color-mix(in srgb,var(--inactive) 70%,transparent); }
+.menu-nav button { text-align:left; padding:10px 12px; border:0; border-radius:8px; background:transparent; color:var(--text); font:inherit; cursor:pointer; transition:.2s; }
+.menu-nav button:hover { background:color-mix(in srgb,var(--accent) 14%,transparent); }
+.menu-nav button.on { background:linear-gradient(45deg,var(--accent),var(--accent2)); color:var(--bg); font-weight:700; }
+#menu-pane { flex:1; overflow:auto; padding:16px 22px; }
+#menu-pane h2 { margin:0 0 4px; } #menu-pane h3 { margin:18px 0 6px; color:var(--accent); font-size:.8rem; text-transform:uppercase; letter-spacing:1.5px; }
+.row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:8px 12px; border-radius:8px; font-size:.88rem; }
+.row:hover { background:color-mix(in srgb,var(--accent) 10%,transparent); }
+.row select, .row input[type=text] { background:var(--surface); color:var(--text); border:1px solid var(--inactive); border-radius:6px; padding:5px 8px; font:inherit; font-size:.82rem; outline:none; }
+.row select:focus { border-color:var(--accent); }
+.range { display:flex; gap:10px; align-items:center; } .range input { accent-color:var(--accent); width:160px; } .range output { width:48px; text-align:right; color:var(--muted); font-size:.78rem; }
+.sw { appearance:none; -webkit-appearance:none; width:42px; height:22px; border-radius:22px; background:var(--surface); border:1px solid var(--inactive); position:relative; cursor:pointer; transition:.2s; }
+.sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--muted); transition:.2s; }
+.sw:checked { background:var(--accent); } .sw:checked::after { left:22px; background:var(--bg); }
+.swatches { display:flex; gap:6px; } .swatches button { width:22px; height:22px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; color:var(--text); font-size:.7rem; background:var(--surface); }
+.swatches button.on { border-color:var(--text); }
+.btn { padding:8px 16px; border-radius:8px; border:1px solid var(--accent); background:transparent; color:var(--accent); font:inherit; cursor:pointer; transition:.2s; }
+.btn:hover { background:var(--accent); color:var(--bg); }
+.btn.google { background:#fff; color:#222; border-color:#fff; font-weight:700; } .btn.google:hover { background:#eee; color:#111; }
+.note { color:var(--muted); font-size:.8rem; line-height:1.6; margin:8px 0; } .note code { color:var(--accent2); }
+.ach-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; margin-top:12px; }
+.ach { display:flex; gap:12px; padding:12px; border-radius:10px; background:color-mix(in srgb,var(--surface) 70%,transparent); border:1px solid var(--inactive); }
+.ach .i { font-size:1.8rem; } .ach b { display:block; } .ach small { color:var(--muted); display:block; font-size:.74rem; margin-top:2px; }
+.ach.locked { opacity:.42; filter:grayscale(1); } .ach.done { border-color:var(--accent); }
+.account-card { display:flex; align-items:center; gap:14px; padding:14px; border-radius:10px; background:color-mix(in srgb,var(--surface) 70%,transparent); margin:12px 0; }
+.account-card img { width:52px; height:52px; border-radius:50%; }
+
+/* toasts */
+#toasts { position:fixed; top:calc(var(--gap)*2 + var(--bar-h)); right:var(--gap); z-index:3000; display:flex; flex-direction:column; gap:10px; width:min(330px,calc(100vw - 24px)); pointer-events:none; }
+.toast { display:flex; gap:12px; align-items:center; padding:12px 14px; border-radius:var(--radius); background:var(--win-bg); backdrop-filter:blur(var(--blur));
+    border:var(--bw) solid var(--accent); box-shadow:0 10px 30px rgba(0,0,0,.45); animation:slideIn .35s cubic-bezier(.2,.8,.2,1); }
+.toast .i { font-size:1.8rem; } .toast b { color:var(--accent); font-size:.72rem; text-transform:uppercase; letter-spacing:1px; display:block; }
+.toast small { color:var(--muted); display:block; }
+.toast.out { opacity:0; transform:translateX(30px); transition:.4s; }
+@keyframes slideIn { from { opacity:0; transform:translateX(60px); } to { opacity:1; transform:none; } }
+
+/* brand / hero / profile / welcome */
+.logo-mark { width:26px; height:26px; border-radius:8px; display:grid; place-items:center; color:var(--bg); font-size:.9rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 18px color-mix(in srgb,var(--accent) 55%,transparent); flex:none; }
+.logo-mark.big { width:64px; height:64px; border-radius:20px; font-size:1.8rem; margin:0 auto 4px; }
+.brand { font-weight:800; letter-spacing:2px; }
+.grad { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.bar-left { display:flex; gap:var(--gap); }
+#hero { flex:none; padding:18px 22px 4px; }
+#hero h1 { margin:0; font-size:1.7rem; font-weight:800; }
+#hero p { margin:4px 0 0; color:var(--muted); font-size:.82rem; }
+.profile-top { display:flex; align-items:center; gap:14px; }
+.avatar { width:54px; height:54px; border-radius:50%; display:grid; place-items:center; color:var(--bg); font-weight:800; font-size:1.4rem; overflow:hidden; flex:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+.avatar img { width:100%; height:100%; }
+.profile-top b { font-size:1.05rem; }
+.chips { display:flex; gap:8px; margin-top:12px; }
+.chip { flex:1; padding:8px 4px; border-radius:10px; text-align:center; background:color-mix(in srgb,var(--surface) 70%,transparent); }
+.chip b { display:block; font-size:1.05rem; color:var(--accent); }
+.chip small { color:var(--muted); font-size:.64rem; text-transform:uppercase; letter-spacing:1px; }
+.sec-title { font-size:.74rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent); margin-bottom:6px; font-weight:700; }
+.recent-item { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; cursor:pointer; font-size:.82rem; transition:.2s; }
+.recent-item:hover { background:color-mix(in srgb,var(--accent) 14%,transparent); }
+.recent-item small { color:var(--muted); margin-left:auto; }
+.profile-btn { margin-top:12px; width:100%; }
+@keyframes rise { from { opacity:0; transform:translateY(16px) scale(.98); } to { opacity:1; transform:none; } }
+#desktop .win { animation:rise .6s cubic-bezier(.2,.8,.2,1) both; }
+#desktop .side .win:nth-child(1) { animation-delay:.08s; } #desktop .side .win:nth-child(2) { animation-delay:.16s; } #desktop .side .win:nth-child(3) { animation-delay:.24s; }
+#welcome { position:fixed; inset:0; z-index:2500; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55);
+    backdrop-filter:blur(12px); font-family:var(--font); color:var(--text); }
+.welcome-card { width:min(440px,92vw); padding:36px 32px; text-align:center; gap:12px; overflow:visible; }
+.wl-title { margin:0; font-size:1.7rem; letter-spacing:4px; line-height:1.2; }
+.wl-tag { margin:0 0 6px; color:var(--muted); font-size:.85rem; line-height:1.6; }
+#wl-name { background:var(--surface); border:1px solid var(--inactive); color:var(--text); border-radius:10px; padding:12px 14px; font:inherit; outline:none; text-align:center; }
+#wl-name:focus { border-color:var(--accent); }
+.welcome-card .btn { padding:12px 16px; font-size:.95rem; }
+.g-mark { font-weight:900; color:#4285f4; margin-right:8px; font-size:1.1rem; }
+.or { color:var(--muted); font-size:.72rem; letter-spacing:2px; }
+#menu textarea { width:100%; background:var(--surface); color:var(--text); border:1px solid var(--inactive); border-radius:8px; padding:8px; font:inherit; font-size:.72rem; resize:vertical; margin:8px 0; outline:none; }
+#menu button:focus, #menu select:focus, #menu input:focus, #menu textarea:focus { outline:2px solid var(--accent); outline-offset:2px; }
+
+@media (max-width:900px) {
+    .book-sidebar { width:150px; padding:25px 10px; } .book-content { padding:30px 20px; }
+    #desktop { grid-template-columns:1fr; overflow-y:auto; }
+    .esde { min-height:430px; } .side { min-height:auto; } #ach-mini { flex:none; }
+    .bar-center { display:none; } .menu-body { flex-direction:column; } .menu-nav { width:auto; flex-direction:row; overflow-x:auto; border-right:0; }
+}
+
+#main-launcher { isolation:isolate;font-size:var(--ui-size,14px); }
+#custom-wallpaper,#wallpaper-shade { position:absolute;inset:0;pointer-events:none;z-index:-1;transition:opacity .3s; }
+#custom-wallpaper { z-index:0;background-position:center;background-repeat:no-repeat; }
+#wallpaper-shade { z-index:1;background:#000; }
+.avatar,.avatar img { border-radius:var(--avatar-radius,50%);object-fit:cover; }
+#user-btn img { width:23px;height:23px;object-fit:cover;border-radius:var(--avatar-radius,50%);margin-right:7px;vertical-align:middle; }
+.profile-preview { display:block;width:90px;height:90px;object-fit:cover;border-radius:var(--avatar-radius,50%);margin:12px 0;border:2px solid var(--accent); }
+.wall-preview { display:block;width:100%;max-height:160px;object-fit:cover;border-radius:12px;margin:12px 0;border:1px solid var(--inactive); }
+#main-launcher .win { box-shadow:0 14px 36px #0003; }
+#main-launcher button { transition:background .18s,transform .18s,border-color .18s; }
+#main-launcher button:active { transform:translateY(1px); }
+#main-launcher button:disabled { opacity:.5;cursor:not-allowed; }
+#main-launcher :focus-visible { outline:2px solid var(--accent2);outline-offset:3px; }
+#menu .pane { scrollbar-width:thin;scrollbar-color:var(--accent) transparent; }
+#menu .row { border-radius:8px;padding:10px 8px; }
+#menu .row:hover { background:color-mix(in srgb,var(--surface) 35%,transparent); }
+.hide-stats .chips { display:none; }
+.compact-cards .recent-item { padding:3px 7px; }
+.compact-cards .ach { padding:8px; }
+.compact-cards #hero { padding-top:10px; }
+#recent .recent-item { border:1px solid transparent;border-radius:9px; }
+#recent .recent-item:hover { border-color:var(--inactive); }
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+
+#book-decoy{background:#f3f1ec;color:#243344;font-family:Georgia,serif}
+#book-decoy .book-sidebar{width:285px;flex-shrink:0;background:#102d39;color:#e9f0ef;padding:32px 22px;border:0;overflow-y:auto}
+.book-badge{width:48px;height:48px;display:grid;place-items:center;border:1px solid #8aabac;border-radius:12px;font:700 17px system-ui;letter-spacing:2px}
+#book-decoy .book-sidebar h2{font-size:27px;line-height:1.2;border:0;margin:20px 0 8px}.book-small{font:12px/1.6 system-ui;opacity:.75}
+#book-search{width:100%;padding:11px;margin:8px 0 22px;border:1px solid #52717d;border-radius:7px;background:#1e404c;color:white}
+#book-decoy .nav-item{display:block;width:100%;border:0;text-align:left;background:transparent;color:#d4e1e3;padding:14px 12px;font:600 14px/1.5 system-ui}
+#book-decoy .nav-item small{display:block;font-size:9px;letter-spacing:2px;opacity:.7}#book-decoy .nav-active{background:#e9d4a5!important;color:#163440!important}
+.book-sidebar-bottom{margin-top:auto;padding-top:30px}.book-sidebar-bottom button{display:block;width:100%;margin:8px 0;background:transparent;color:inherit;border:1px solid #52717d;padding:9px;border-radius:6px;cursor:pointer}
+#secret-trigger{padding:22px 0 0;color:#a9c1c6}#book-decoy .book-content{padding:0 48px 32px;background:#f7f5ef;--reader-size:18px;font-size:var(--reader-size)}
+.book-toolbar{display:flex;justify-content:space-between;align-items:center;max-width:880px;margin:0 auto;padding:20px 0;font:10px system-ui;letter-spacing:1.5px;border-bottom:1px solid #d4d9d7}
+#book-decoy button{cursor:pointer}.book-toolbar button,.book-pagination button{border:1px solid #bac5c3;color:#23424a;background:#fffdf7;border-radius:6px;padding:9px 12px}
+.book-reading-progress{height:3px;background:#e5e7df;max-width:880px;margin:0 auto 40px}#book-progress{display:block;height:100%;width:0;background:#b68a42}
+#book-decoy .chapter{max-width:760px}.book-eyebrow{color:#93713d;font:700 11px system-ui;letter-spacing:2px}
+#book-decoy h1{font-size:clamp(32px,4vw,52px);font-weight:500;line-height:1.15;margin:18px 0}.book-lead{font-size:1.2em;line-height:1.7;color:#52656b}
+#book-decoy .chapter h2{font:700 13px system-ui;text-transform:uppercase;letter-spacing:1.4px;margin:38px 0 16px;color:#36545c}
+.book-objectives{border-left:3px solid #b68a42;background:#edece3;padding:18px 22px;margin:28px 0}.book-objectives strong{font:700 12px system-ui;text-transform:uppercase;letter-spacing:1px}
+#book-decoy .equation{background:#fffdf8;border:1px solid #d8d7cb;font-size:1.7em;border-radius:10px;padding:24px}.worked-example{background:#fffdf8;border:1px solid #deded4;padding:22px;border-radius:10px}.worked-example summary{cursor:pointer;color:#426962;font:600 14px system-ui}
+.book-notes-label{display:block;font:600 13px system-ui;margin:18px 0 10px}.book-notes{width:100%;min-height:130px;resize:vertical;background:#fffdf8;color:#243344;border:1px solid #c7cfca;border-radius:8px;padding:14px;font:16px/1.7 Georgia}
+.book-page-footer,.book-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:760px;margin:40px auto 0;font:10px system-ui;letter-spacing:1px;border-top:1px solid #d4d9d7;padding-top:20px}
+@media(max-width:700px){#book-decoy .book-sidebar{width:170px;padding:20px 12px}#book-decoy .book-sidebar h2{font-size:21px}#book-decoy .book-content{padding:0 18px 25px}.book-toolbar>span{max-width:120px}.book-pagination{flex-wrap:wrap}}
+
+#in-game-panic { display:none;position:fixed;top:8px;right:12px;z-index:9500;align-items:center;gap:6px;padding:9px 13px;border:1px solid #ffffff70;border-radius:12px;background:#16222ee8;color:#fff;font:600 12px system-ui;cursor:pointer;box-shadow:0 4px 20px #0006;backdrop-filter:blur(16px); }
+#in-game-panic:hover { background:#973b3b; }
+#in-game-panic:focus-visible { outline:3px solid #ffce75;outline-offset:3px; }
+.avatar { position:relative; }
+.avatar-glass .avatar { border:1px solid #ffffff85;box-shadow:inset 0 1px 2px #ffffffaa,0 8px 24px #0005,0 0 0 3px #ffffff12; }
+.avatar-glass .avatar::after { content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(135deg,#ffffff65,transparent 45%,#ffffff08 70%,#ffffff35);box-shadow:inset 0 -1px 2px #ffffff60; }
+.avatar-glass #user-btn img,.avatar-glass .profile-preview { border:1px solid #ffffffa0;box-shadow:0 0 0 2px #ffffff18,0 4px 14px #0004;filter:contrast(1.04) saturate(1.08); }
+
+/* Keep wallpaper sharp. Optional glass blur belongs only to individual panels. */
+#wallpaper,#custom-wallpaper,#wallpaper-shade { filter:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transform:none!important; }
+#menu,#welcome { backdrop-filter:none!important;-webkit-backdrop-filter:none!important; }
+.cloak-preview { display:flex;align-items:center;gap:10px;max-width:390px;border:1px solid var(--inactive);border-radius:12px 12px 5px 5px;background:var(--surface);padding:12px 16px;margin:12px 0;box-shadow:0 5px 14px #0002; }
+.cloak-preview-icon { width:20px;height:20px;object-fit:contain;flex:none; }
+.cloak-preview-title { overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:13px system-ui;color:var(--text); }
+#custom-tab-title { max-width:240px;width:55%;background:var(--surface);border:1px solid var(--inactive);padding:9px 12px;border-radius:8px;color:var(--text);font:inherit; }
+</style>
+</head>
+<body data-wall="aurora">
+
+<!-- Decoy textbook -->
+<div id="book-decoy"><aside class="book-sidebar"><div class="book-badge">F / P</div><h2>Foundations<br>of Physics</h2><p class="book-small">Interactive study edition</p><label class="book-small" for="book-search">FIND A CHAPTER</label><input id="book-search" type="search" placeholder="Search chapters…"><nav><button class="nav-item nav-active" onclick="showChapter(1,this)"><small>CHAPTER 01</small>Motion & measurement</button><button class="nav-item " onclick="showChapter(2,this)"><small>CHAPTER 02</small>Forces & interactions</button><button class="nav-item " onclick="showChapter(3,this)"><small>CHAPTER 03</small>Heat & energy</button><button class="nav-item " onclick="showChapter(4,this)"><small>CHAPTER 04</small>Matter & light</button></nav><p id="book-no-results" hidden>No matching chapters.</p><div class="book-sidebar-bottom"><button id="book-bookmark">☆ Bookmark chapter</button><button id="book-return">Go to bookmark</button><div id="secret-trigger" ondblclick="unlockLauncher()">Foundations · Digital edition</div></div></aside><main class="book-content"><header class="book-toolbar"><span>COURSE LIBRARY / PHYSICS 101</span><div><button id="book-smaller" aria-label="Smaller text">A−</button><button id="book-larger" aria-label="Larger text">A+</button></div></header><div class="book-reading-progress"><span id="book-progress"></span></div><article id="ch1" class="chapter active"><div class="book-eyebrow">FOUNDATIONS / UNIT 01</div><h1>Kinematics</h1><p class="book-lead">Kinematics is the study of motion without considering its causes.</p><div class="book-objectives"><strong>Learning focus</strong><p>Identify the quantities in the central relationship. Explain what each symbol means and state your units.</p></div><h2>01 / Central relationship</h2><div class="equation">v = Δx / Δt</div><p>Read the relationship in words before substituting numbers. List the known quantities, check the units, and explain whether your answer makes sense.</p><h2>02 / Worked example</h2><div class="worked-example"><p>A cart travels 24 m in 6 s. Find its average velocity.</p><details><summary>Show solution</summary><p>24 ÷ 6 = 4 m/s.</p></details></div><h2>03 / Reflection</h2><p>Explain the equation in your own words. Which quantities change together? Write an example of your own below.</p><label for="notes-1" class="book-notes-label">Study notes</label><textarea id="notes-1" class="book-notes" placeholder="Summarize the lesson or work through an example…"></textarea><p class="book-small">Included in your downloadable launcher save.</p><div class="book-page-footer">FOUNDATIONS OF PHYSICS · UNIT 1 OF 4</div></article><article id="ch2" class="chapter "><div class="book-eyebrow">FOUNDATIONS / UNIT 02</div><h1>Newton’s laws</h1><p class="book-lead">The relationship between an object’s mass and the force required to accelerate it.</p><div class="book-objectives"><strong>Learning focus</strong><p>Identify the quantities in the central relationship. Explain what each symbol means and state your units.</p></div><h2>01 / Central relationship</h2><div class="equation">F = m · a</div><p>Read the relationship in words before substituting numbers. List the known quantities, check the units, and explain whether your answer makes sense.</p><h2>02 / Worked example</h2><div class="worked-example"><p>A 3 kg cart accelerates at 2 m/s². Find the net force.</p><details><summary>Show solution</summary><p>3 × 2 = 6 N.</p></details></div><h2>03 / Reflection</h2><p>Explain the equation in your own words. Which quantities change together? Write an example of your own below.</p><label for="notes-2" class="book-notes-label">Study notes</label><textarea id="notes-2" class="book-notes" placeholder="Summarize the lesson or work through an example…"></textarea><p class="book-small">Included in your downloadable launcher save.</p><div class="book-page-footer">FOUNDATIONS OF PHYSICS · UNIT 2 OF 4</div></article><article id="ch3" class="chapter "><div class="book-eyebrow">FOUNDATIONS / UNIT 03</div><h1>Thermodynamics</h1><p class="book-lead">The branch of physics dealing with heat, work, and temperature.</p><div class="book-objectives"><strong>Learning focus</strong><p>Identify the quantities in the central relationship. Explain what each symbol means and state your units.</p></div><h2>01 / Central relationship</h2><div class="equation">ΔU = Q − W</div><p>Read the relationship in words before substituting numbers. List the known quantities, check the units, and explain whether your answer makes sense.</p><h2>02 / Worked example</h2><div class="worked-example"><p>A system receives 100 J of heat and does 30 J of work. Find the change in internal energy.</p><details><summary>Show solution</summary><p>100 − 30 = 70 J. Here W means work done by the system.</p></details></div><h2>03 / Reflection</h2><p>Explain the equation in your own words. Which quantities change together? Write an example of your own below.</p><label for="notes-3" class="book-notes-label">Study notes</label><textarea id="notes-3" class="book-notes" placeholder="Summarize the lesson or work through an example…"></textarea><p class="book-small">Included in your downloadable launcher save.</p><div class="book-page-footer">FOUNDATIONS OF PHYSICS · UNIT 3 OF 4</div></article><article id="ch4" class="chapter "><div class="book-eyebrow">FOUNDATIONS / UNIT 04</div><h1>Quantum theory</h1><p class="book-lead">Describing physical properties at the scale of atoms and subatomic particles.</p><div class="book-objectives"><strong>Learning focus</strong><p>Identify the quantities in the central relationship. Explain what each symbol means and state your units.</p></div><h2>01 / Central relationship</h2><div class="equation">E = h · f</div><p>Read the relationship in words before substituting numbers. List the known quantities, check the units, and explain whether your answer makes sense.</p><h2>02 / Worked example</h2><div class="worked-example"><p>What happens to photon energy when frequency doubles?</p><details><summary>Show solution</summary><p>Energy doubles because h is constant.</p></details></div><h2>03 / Reflection</h2><p>Explain the equation in your own words. Which quantities change together? Write an example of your own below.</p><label for="notes-4" class="book-notes-label">Study notes</label><textarea id="notes-4" class="book-notes" placeholder="Summarize the lesson or work through an example…"></textarea><p class="book-small">Included in your downloadable launcher save.</p><div class="book-page-footer">FOUNDATIONS OF PHYSICS · UNIT 4 OF 4</div></article><div class="book-pagination"><button id="book-prev">← Previous</button><span id="book-page-number">1 / 4</span><button id="book-next">Next →</button></div></main></div>
+<!-- Password modal -->
+<div id="password-modal" role="dialog" aria-modal="true" aria-labelledby="password-title">
+    <div class="password-box">
+        <h2 id="password-title">Enter password</h2>
+        <p>Enter the password to open the launcher.</p>
+        <div class="password-row">
+            <input id="password-input" type="password" autocomplete="off" placeholder="Password" aria-label="Password">
+            <button id="toggle-password" type="button" aria-label="Show password" title="Show password">👁</button>
+        </div>
+        <p id="password-error" aria-live="polite"></p>
+        <div class="password-actions">
+            <button id="cancel-password" type="button">Cancel</button>
+            <button id="submit-password" type="button">Unlock</button>
+        </div>
+    </div>
+</div>
+
+<!-- Launcher -->
+<div id="main-launcher">
+<button id="in-game-panic" type="button" title="Return to textbook immediately">⚠ Textbook</button>
+
+    <!-- Replace PASTE_BASE64_HERE with your mp3 as base64 (base64 -w 0 music.mp3) -->
+    <audio id="cyber-audio" loop preload="auto"></audio>
+    <div id="wallpaper"><div id="custom-wallpaper" aria-hidden="true"></div><div id="wallpaper-shade" aria-hidden="true"></div></div>
+
+    <header id="bar">
+        <div class="bar-left"><div class="pill brand"><div class="logo-mark">✦</div><span class="grad" id="brand-name">SPEED LAUNCHER</span></div><div class="pill" id="ws" aria-label="Workspaces"></div></div>
+        <div class="pill bar-center" id="clock">--</div>
+        <div class="bar-right">
+            <button class="pill" id="music-btn" type="button" aria-label="Play or pause music">▶ Play</button>
+            <button class="pill" id="user-btn" type="button" title="Account">👤 guest</button>
+            <button class="pill" id="menu-btn" type="button" title="Menu (M)">☰ Menu</button>
+        </div>
+    </header>
+
+    <main id="desktop">
+        <section class="win esde" id="esde">
+            <div class="wtitle">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span><span class="app-name">speed launcher</span> ▸ <b id="ws-name">All</b></span>
+                <span class="spacer"></span>
+                <span id="count"></span>
+                <input id="search" type="text" placeholder="/ search" autocomplete="off" aria-label="Search">
+            </div>
+            <div id="hero"></div>
+            <div class="stage" id="stage"><div class="track" id="track"></div></div>
+            <div id="info"></div>
+            <div class="helpbar">
+                <span><kbd>←</kbd><kbd>→</kbd> browse</span><span><kbd>Enter</kbd> launch</span><span><kbd>1</kbd>–<kbd>4</kbd> workspace</span>
+                <span><kbd>/</kbd> search</span><span><kbd>M</kbd> menu</span><span><kbd id="panic-hint">P</kbd> panic</span>
+                <span id="pad-hint" style="display:none">🎮 <kbd>A</kbd> launch · <kbd>B</kbd> back · <kbd>LB</kbd><kbd>RB</kbd> workspace · <kbd>Y</kbd> menu · hold <kbd>Select</kbd> panic</span>
+            </div>
+        </section>
+
+        <aside class="side">
+            <section class="win pad" id="profile"></section>
+            <section class="win pad" id="recent"></section>
+            <section class="win pad" id="ach-mini" title="Open achievements"></section>
+        </aside>
+    </main>
+
+    <div id="game-overlay">
+        <div class="win active">
+            <div class="wtitle">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span id="current-title" style="color:var(--accent);font-weight:700;">RUNNING</span>
+                <span class="spacer"></span>
+                <button class="wbtn" id="full-btn" type="button">⛶ Fullscreen</button>
+                <button class="wbtn red" type="button" onclick="closeGame()">✕ EXIT HUB</button>
+            </div>
+            <iframe id="game-frame" src="about:blank" title="Launcher content"></iframe>
+        </div>
+    </div>
+
+    <div id="menu">
+        <div class="win menu-win active">
+            <div class="wtitle">
+                <span class="dots"><i></i><i></i><i></i></span>
+                <span>main menu ▸ <b id="menu-title">Settings</b></span>
+                <span class="spacer"></span>
+                <button class="wbtn" id="menu-close" type="button">✕ Close (Esc)</button>
+            </div>
+            <div class="menu-body">
+                <nav class="menu-nav" id="menu-nav"></nav>
+                <section id="menu-pane"></section>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcome">
+        <div class="win welcome-card active">
+            <div class="logo-mark big">✦</div>
+            <h1 class="wl-title grad" id="wl-title">SPEED LAUNCHER</h1>
+            <p class="wl-tag">Choose a display name. Download a save in Account to keep a backup.</p>
+            <input id="wl-name" type="text" maxlength="20" placeholder="Choose a display name" autocomplete="off" aria-label="Display name">
+            <button id="wl-guest" class="btn" type="button">Continue</button>
+            <p id="wl-note" class="note"></p>
+        </div>
+    </div>
+
+    <div id="toasts"></div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG
+   ===================================================================== */
+const wrongPasswordRedirect = "haha.html";   // local page in the same folder as index.html
+const GAMES_DIR = "games/";                   // ~/totalymath/games/
+
+
+const APP_NAME = "Speed Launcher";          // change this to rename the whole launcher
+
+/* =====================================================================
+   DATA
+   ===================================================================== */
+// [category, title, file inside /games, window name]
+const ITEMS = [
+    ["System","OS","os.html","Operating System"],
+    ["Internet","Browser","browser.html","WebBrowser"],
+    ["Game","GamesDB","gamesdb.html","CrisperV4"],
+    ["Game","DROID","droid.html","Droid Engine"],
+    ["Game","DRIFT","drift.html","DRIFT"],
+    ["Game","Cartridge","doom.html","Cartridge"],
+    ["Utility","Audio Spy","audiospy.html","Audio Tools"],
+    ["Game","ROCKET","rocket.html","Game"],
+    ["Game","2D Rivals","rivals2d.html","2D"],
+    ["MD","GPLV3","license.html","License"],
+    ["Game","CookieClicker","cookieclicker.html","Clicker"],
+    ["Game","FNAF3","fnaf3.html","Horror"],
+    ["Game","Stack","stack.html","Fun"],
+    ["Game","Polytrack","polytrack.html","Racing"],
+    ["Utility","Copy.sh","v86.html","CLI"],
+    ["Game","GamesDB2","gamesdb2.html","MathDuck"],
+    ["Game","Minecraft","minecraft.html","Voxel"],
+    ["Game","GamesDB3","gamesdb3.html","UnblockedIDK"],
+    ["Music","LofiPlayer","lofi.html","LofiMusic"],
+    ["Utility","AiChatbot","chat.html","Chat"],
+    ["Game","99Nights","99nights.html","99NightsInTheForest"],
+    ["Game","Pokemon","pokemon.html","PokemonAll"],
+    ["Game","PaintWarzoneFPS","paintwarzone.html","FPS"],
+    ["Game","Minecraft2D","minecraft2d.html","FPS"],
+    ["Profile","ME","me.html","GUNS.LOL"],
+    ["Game","FunnyShooter2","funnyshooter2.html","FunnyFPS"]
+].map(([cat, title, file, name]) => ({ cat, title, file, name, id:file.replace(/\.html$/, "") }));
+
+const CAT_ICON = { System:"🖥️", Internet:"🌐", Game:"🎮", Utility:"🛠️", MD:"📜", Music:"🎵", Profile:"👤" };
+const WORKSPACES = [
+    { n:"All",   cats:null },
+    { n:"Games", cats:["Game"] },
+    { n:"Tools", cats:["System","Internet","Utility","MD"] },
+    { n:"Media", cats:["Music","Profile"] }
+];
+
+const THEMES = {
+    mocha:  { name:"Catppuccin Mocha", bg:"#11111b", base:"#1e1e2e", surface:"#313244", text:"#cdd6f4", muted:"#a6adc8", accent:"#cba6f7", accent2:"#89b4fa", red:"#f38ba8", green:"#a6e3a1", yellow:"#f9e2af", inactive:"#45475a" },
+    rose:   { name:"Rosé Pine",        bg:"#191724", base:"#1f1d2e", surface:"#26233a", text:"#e0def4", muted:"#908caa", accent:"#c4a7e7", accent2:"#ebbcba", red:"#eb6f92", green:"#9ccfd8", yellow:"#f6c177", inactive:"#403d52" },
+    gruv:   { name:"Gruvbox",          bg:"#1d2021", base:"#282828", surface:"#3c3836", text:"#ebdbb2", muted:"#a89984", accent:"#fabd2f", accent2:"#fe8019", red:"#fb4934", green:"#b8bb26", yellow:"#fabd2f", inactive:"#504945" },
+    tokyo:  { name:"Tokyo Night",      bg:"#16161e", base:"#1a1b26", surface:"#24283b", text:"#c0caf5", muted:"#787c99", accent:"#7aa2f7", accent2:"#bb9af7", red:"#f7768e", green:"#9ece6a", yellow:"#e0af68", inactive:"#3b4261" },
+    nord:   { name:"Nord",             bg:"#242933", base:"#2e3440", surface:"#3b4252", text:"#eceff4", muted:"#aab1c0", accent:"#88c0d0", accent2:"#81a1c1", red:"#bf616a", green:"#a3be8c", yellow:"#ebcb8b", inactive:"#4c566a" },
+    dracula:{ name:"Dracula",          bg:"#191a21", base:"#282a36", surface:"#44475a", text:"#f8f8f2", muted:"#9aa0b8", accent:"#bd93f9", accent2:"#ff79c6", red:"#ff5555", green:"#50fa7b", yellow:"#f1fa8c", inactive:"#44475a" },
+    orange: { name:"Speed Orange",     bg:"#05070a", base:"#0b0d12", surface:"#1a1d24", text:"#ffffff", muted:"#9aa3b0", accent:"#ff7700", accent2:"#ffb347", red:"#ff4444", green:"#6fdc8c", yellow:"#ffd166", inactive:"#3a3f4a" }
+};
+
+const CLOAKS = {
+    "off": {
+        "label": "Off (Physics 101)",
+        "title": "Physics 101",
+        "icon": null
+    },
+    "docs": {
+        "label": "Google Docs",
+        "title": "Untitled document - Google Docs",
+        "icon": [
+            "#4285f4",
+            "docs"
+        ]
+    },
+    "classroom": {
+        "label": "Google Classroom",
+        "title": "Classes",
+        "icon": [
+            "#188038",
+            "classroom"
+        ]
+    },
+    "drive": {
+        "label": "Google Drive",
+        "title": "My Drive - Google Drive",
+        "icon": [
+            "#fbbc04",
+            "drive"
+        ]
+    },
+    "sheets": {
+        "label": "Google Sheets",
+        "title": "Untitled spreadsheet - Google Sheets",
+        "icon": [
+            "#188038",
+            "sheets"
+        ]
+    },
+    "slides": {
+        "label": "Google Slides",
+        "title": "Untitled presentation - Google Slides",
+        "icon": [
+            "#f9ab00",
+            "slides"
+        ]
+    },
+    "canvas": {
+        "label": "Course dashboard",
+        "title": "Dashboard",
+        "icon": [
+            "#c23934",
+            "dashboard"
+        ]
+    },
+    "library": {
+        "label": "Study library",
+        "title": "Library | Course materials",
+        "icon": [
+            "#475569",
+            "library"
+        ]
+    },
+    "notes": {
+        "label": "Class notes",
+        "title": "Class notes",
+        "icon": [
+            "#5b55c8",
+            "notes"
+        ]
+    },
+    "custom": {
+        "label": "Custom title & icon",
+        "title": "Study notes",
+        "icon": [
+            "#334155",
+            "notes"
+        ]
+    }
+};
+
+const DEFAULTS = { theme:"mocha", accent:"", wall:"aurora", gap:12, bw:2, radius:12, opacity:82, blur:0, anim:true,
+    layout:"carousel", h24:false, secs:true, font:"mono", volume:50, panic:"`", cloak:"off", customTabTitle:"Study notes", recentCount:5, showRecent:true, showHero:true, showStats:true, toastSeconds:5, textScale:100, wallDim:35, wallFit:"cover", avatarShape:"circle", avatarFinish:"plain", compact:false };
+
+const SCHEMA = [
+    {section:"Personalization"},
+    {key:"wallDim",label:"Wallpaper dimming",type:"range",min:0,max:85,unit:"%"},
+    {key:"wallFit",label:"Wallpaper fit",type:"select",options:[["cover","Fill screen"],["contain","Fit image"]]},
+    {key:"avatarFinish",label:"Profile picture effect",type:"select",options:[["plain","Standard"],["glass","Liquid glass"]]},
+    {key:"avatarShape",label:"Profile picture shape",type:"select",options:[["circle","Circle"],["rounded","Rounded square"]]},
+    {key:"textScale",label:"Interface text size",type:"range",min:85,max:120,unit:"%"},
+    {key:"compact",label:"Compact cards",type:"toggle"},
+    {section:"Dashboard"},
+    {key:"showHero",label:"Show greeting",type:"toggle"},
+    {key:"showRecent",label:"Show recently used",type:"toggle"},
+    {key:"showStats",label:"Show profile statistics",type:"toggle"},
+    {key:"recentCount",label:"Recently used items",type:"range",min:3,max:12,unit:""},
+    {key:"toastSeconds",label:"Achievement notification duration",type:"range",min:2,max:10,unit:"s"},
+
+    { section:"Appearance" },
+    { key:"theme", label:"Theme", type:"select", options:Object.keys(THEMES).map(k => [k, THEMES[k].name]) },
+    { key:"accent", label:"Accent color", type:"swatch" },
+    { key:"wall", label:"Wallpaper", type:"select", options:[["aurora","Aurora"],["grid","Grid"],["dots","Dots"],["solid","Solid"]] },
+    { key:"font", label:"Font", type:"select", options:[["mono","Monospace (rice)"],["sans","Sans-serif"]] },
+    { key:"layout", label:"App list layout", type:"select", options:[["carousel","Carousel (ESDE)"],["grid","Grid"]] },
+    { section:"Hyprland" },
+    { key:"gap", label:"Gaps", type:"range", min:0, max:40, unit:"px" },
+    { key:"bw", label:"Border size", type:"range", min:1, max:6, unit:"px" },
+    { key:"radius", label:"Rounding", type:"range", min:0, max:26, unit:"px" },
+    { key:"opacity", label:"Window opacity", type:"range", min:40, max:100, unit:"%" },
+    { key:"blur", label:"Panel glass blur (0 = sharp wallpaper)", type:"range", min:0, max:30, unit:"px" },
+    { key:"anim", label:"Animations", type:"toggle" },
+    { section:"Clock" },
+    { key:"h24", label:"24-hour clock", type:"toggle" },
+    { key:"secs", label:"Show seconds", type:"toggle" },
+    { section:"Audio" },
+    { key:"volume", label:"Music volume", type:"range", min:0, max:100, unit:"%" },
+    { section:"Privacy" },
+    { key:"panic", label:"Panic key", type:"select", options:[["`","` (backtick)"],["Delete","Delete"],["\\","\\"]] },
+    { key:"cloak", label:"Tab cloak", type:"select", options:Object.keys(CLOAKS).map(k => [k, CLOAKS[k].label]) }
+];
+const SWATCHES = ["", "#f38ba8", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89b4fa", "#cba6f7", "#f5c2e7", "#ff7700"];
+
+/* =====================================================================
+   ACHIEVEMENTS
+   ===================================================================== */
+const totalLaunches = () => Object.values(state.launched).reduce((a, b) => a + b, 0);
+const ACH = [
+{id:"identity",icon:"\ud83e\udeaa",name:"Make It Yours",desc:"Set a display name",check:()=>!!state.name},
+{id:"portrait",icon:"\ud83d\uddbc\ufe0f",name:"New Look",desc:"Set a profile picture",check:()=>validImage(state.avatar)},
+{id:"backdrop",icon:"\ud83c\udf04",name:"Interior Designer",desc:"Upload a custom wallpaper",check:()=>validImage(state.wallpaper)},
+{id:"backup",icon:"\ud83d\udcbe",name:"Safety First",desc:"Download a save file",check:()=>(state.counters.exports || 0)>=1},
+{id:"restore",icon:"\ud83d\udcc2",name:"Welcome Back",desc:"Load a save file",check:()=>(state.counters.imports || 0)>=1},
+{id:"hundred",icon:"\ud83d\ude80",name:"Centurion",desc:"Use apps 100 times",check:()=>totalLaunches()>=100},
+{id:"fiveapps",icon:"\ud83e\uddf0",name:"Toolbox",desc:"Use five different apps",check:()=>Object.keys(state.launched).filter(k=>state.launched[k]>0).length>=5},
+{id:"tenapps",icon:"\ud83d\uddfa\ufe0f",name:"Wide Horizons",desc:"Use ten different apps",check:()=>Object.keys(state.launched).filter(k=>state.launched[k]>0).length>=10},
+{id:"utility",icon:"\ud83d\udee0\ufe0f",name:"Getting Things Done",desc:"Use three different utilities",check:()=>ITEMS.filter(i=>i.cat==="Utility" && state.launched[i.id]).length>=3},
+{id:"chat",icon:"\ud83d\udcac",name:"Conversation Starter",desc:"Open AiChatbot",check:()=>(state.launched.chat || 0)>=1},
+{id:"hour",icon:"\u231b",name:"Time Well Spent",desc:"Accumulate one hour of app use",check:()=>state.playtime>=3600},
+{id:"settings25",icon:"\u2699\ufe0f",name:"Fine Tuning",desc:"Change settings 25 times",check:()=>state.counters.settingChanges>=25},
+{id:"notes",icon:"\ud83d\udcdd",name:"Note Taker",desc:"Write textbook notes",check:()=>Object.values(state.bookNotes || {}).some(v=>v.trim().length>=20)},
+{id:"bookmark",icon:"\ud83d\udd16",name:"Place Keeper",desc:"Bookmark a textbook chapter",check:()=>!!state.bookBookmark},
+{id:"gridview",icon:"\u25a6",name:"All at a Glance",desc:"Enable grid layout",check:()=>state.settings.layout==="grid"},
+{id:"minimal",icon:"\u2728",name:"Less Is More",desc:"Enable compact cards",check:()=>!!state.settings.compact},
+
+    { id:"hello",     icon:"👋", name:"Hello, World",        desc:"Unlock the launcher",               check:() => true },
+    { id:"pad",       icon:"🎮", name:"Plug & Play",         desc:"Connect a controller",              check:() => state.counters.pad >= 1 },
+    { id:"start",     icon:"🕹️", name:"Press Start",          desc:"Launch your first app",             check:() => totalLaunches() >= 1 },
+    { id:"regular",   icon:"🔥", name:"Regular",             desc:"Launch 10 times",                   check:() => totalLaunches() >= 10 },
+    { id:"nolife",    icon:"💯", name:"No Life",             desc:"Launch 50 times",                   check:() => totalLaunches() >= 50 },
+    { id:"complete",  icon:"🏆", name:"Completionist",       desc:"Launch every app at least once",    check:() => ITEMS.every(i => state.launched[i.id]) },
+    { id:"explorer",  icon:"🧭", name:"Explorer",            desc:"Visit every workspace",             check:() => WORKSPACES.every((_, i) => state.visited.includes(i)) },
+    { id:"rice",      icon:"🍚", name:"It's Called Ricing",  desc:"Switch themes 3 times",             check:() => state.counters.themeChanges >= 3 },
+    { id:"tinker",    icon:"🔧", name:"Tinkerer",            desc:"Change 10 settings",                check:() => state.counters.settingChanges >= 10 },
+    { id:"panic",     icon:"🚨", name:"Teacher Incoming",    desc:"Use the panic button",              check:() => state.counters.panics >= 1 },
+    { id:"keys",      icon:"⌨️", name:"Keyboard Warrior",    desc:"Launch 5 apps with the keyboard",   check:() => state.counters.keyLaunch >= 5 },
+    { id:"dj",        icon:"🎧", name:"DJ",                  desc:"Press play on the music",           check:() => state.counters.music >= 1 },
+    { id:"night",     icon:"🦉", name:"Night Owl",           desc:"Open the launcher after midnight",  check:() => new Date().getHours() < 5 },
+    { id:"marathon",  icon:"⏱️", name:"Marathon",            desc:"30 minutes of total play time",     check:() => state.playtime >= 1800 },
+    { id:"cloak",     icon:"🥷", name:"Undercover",          desc:"Enable a tab cloak",                check:() => state.settings.cloak !== "off" },
+    { id:"seeker",    icon:"🔎", name:"Seeker",              desc:"Use the search bar",                check:() => state.counters.searches >= 1 }
+];
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const LS_KEY = "speedlauncher.v2";
+function freshState() {
+    return { google:null, name:"", onboarded:false, recent:[], settings:{ ...DEFAULTS }, settingsAt:0, launched:{}, playtime:0, ach:{}, visited:[0],
+        counters:{ themeChanges:0, settingChanges:0, panics:0, keyLaunch:0, music:0, searches:0, pad:0 } };
+}
+function loadState() {
+    try {
+        const s = JSON.parse(localStorage.getItem(LS_KEY));
+        if (s) { const f = freshState();
+            return { ...f, ...s, settings:{ ...f.settings, ...s.settings }, counters:{ ...f.counters, ...s.counters } }; }
+    } catch (e) {}
+    return freshState();
+}
+function readProfileCookie() {
+    try { const c = document.cookie.split("; ").find(x => x.startsWith("launcher_profile="));
+        const p = c ? JSON.parse(decodeURIComponent(c.slice("launcher_profile=".length))) : null;
+        return p && typeof p.name === "string" ? p.name.slice(0,20) : "";
+    } catch (e) { return ""; }
+}
+function rememberProfile() {
+    try { document.cookie = "launcher_profile=" + encodeURIComponent(JSON.stringify({name:state.name || ""})) + "; Max-Age=2592000; Path=/; SameSite=Lax" + (location.protocol === "https:" ? "; Secure" : ""); } catch (e) {}
+}
+let state = loadState(); delete state.google;
+// One-time migration: start with clear backgrounds, including existing profiles.
+if (state.sharpWallpaperVersion !== 1) { state.settings.blur = 0; state.sharpWallpaperVersion = 1; }
+if (state.settings.panic === "p") state.settings.panic = "`";
+if (!state.name) state.name = readProfileCookie();
+function saveState() {
+    rememberProfile();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+    catch (e) { if (typeof unlocked !== "undefined" && unlocked) toast("⚠", "Storage full", ["Download a save to keep your changes.", "Try a smaller wallpaper."]); }
+}
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function hexToRgb(h) { h = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); }
+function hue(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+function fmtDur(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
+    return h ? h + "h " + String(m).padStart(2, "0") + "m" : m + "m " + String(sec % 60).padStart(2, "0") + "s"; }
+
+const music = $("cyber-audio");
+if (MUSIC_BASE64 && MUSIC_BASE64 !== "PASTE_BASE64_HERE") music.src = "data:audio/mpeg;base64," + MUSIC_BASE64.replace(/\s+/g, "");
+const musicBtn = $("music-btn");
+let unlocked = false, sessionStart = Date.now();
+let curWs = 0, sel = 0, query = "", curGame = null, gameStart = 0;
+let musicEnabled = state.musicEnabled !== false;
+
+/* =====================================================================
+   SETTINGS APPLY
+   ===================================================================== */
+function cloakIcon(color, kind) {
+    const shapes = {
+        docs:'<path d="M10 6h9l5 5v15H10z" fill="white"/><path d="M18 6v7h6" fill="#c7d8fd"/><path d="M13 17h8m-8 4h8" stroke="'+color+'" stroke-width="1.7"/>',
+        sheets:'<rect x="8" y="6" width="17" height="21" rx="2" fill="white"/><path d="M11 12h11v11H11zm0 4h11m-11 4h11m-7-8v11" fill="none" stroke="'+color+'" stroke-width="1.5"/>',
+        slides:'<rect x="6" y="8" width="21" height="16" rx="2" fill="white"/><rect x="9" y="11" width="15" height="9" rx="1" fill="'+color+'"/>',
+        drive:'<path d="M13 6h7l9 16-4 6H7l-4-6z" fill="#fbbc04"/><path d="M13 6l7 12-4 7L6 11z" fill="#34a853"/><path d="M7 21h22l-4 7H7z" fill="#4285f4"/>',
+        classroom:'<rect x="5" y="7" width="22" height="18" rx="2" fill="#fbbc04"/><rect x="7" y="9" width="18" height="13" fill="#188038"/><circle cx="16" cy="14" r="3" fill="white"/><path d="M10 21q6-8 12 0" fill="white"/>',
+        dashboard:'<g fill="white"><rect x="7" y="7" width="8" height="8" rx="2"/><rect x="18" y="7" width="8" height="8" rx="2"/><rect x="7" y="18" width="8" height="8" rx="2"/><rect x="18" y="18" width="8" height="8" rx="2"/></g>',
+        library:'<path d="M6 9q5-3 10 0 5-3 10 0v16q-5-3-10 0-5-3-10 0z" fill="white"/><path d="M16 9v16" stroke="'+color+'" stroke-width="2"/>',
+        notes:'<rect x="8" y="5" width="18" height="23" rx="3" fill="white"/><path d="M12 12h10m-10 5h10m-10 5h7" stroke="'+color+'" stroke-width="2"/>'
+    };
+    return "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="'+color+'"/>'+(shapes[kind] || shapes.notes)+'</svg>');
+}
+function currentTabAppearance() {
+    const chosen = CLOAKS[state.settings.cloak] || CLOAKS.off;
+    return {
+        title: state.settings.cloak === "custom" ? (String(state.settings.customTabTitle || "Study notes").trim().slice(0,100) || "Study notes") : chosen.title,
+        icon: state.settings.cloak === "custom" && validImage(state.customTabIcon) ? state.customTabIcon : chosen.icon ? cloakIcon(chosen.icon[0],chosen.icon[1]) : "icon.png"
+    };
+}
+function applyTabCloak() {
+    const appearance = currentTabAppearance(); document.title = appearance.title;
+    let icon = document.querySelector("link[rel~='icon']");
+    if (!icon) { icon=document.createElement("link");icon.rel="icon";document.head.appendChild(icon); }
+    icon.removeAttribute("type"); icon.href = appearance.icon;
+    document.querySelectorAll(".cloak-preview-title").forEach(n=>n.textContent=appearance.title);
+    document.querySelectorAll(".cloak-preview-icon").forEach(n=>n.src=appearance.icon);
+}
+function applySettings() {
+    const s = state.settings, t = THEMES[s.theme] || THEMES.mocha, r = document.documentElement.style;
+    const vars = { "--bg":t.bg, "--base":t.base, "--surface":t.surface, "--text":t.text, "--muted":t.muted,
+        "--accent":s.accent || t.accent, "--accent2":t.accent2, "--red":t.red, "--green":t.green, "--yellow":t.yellow, "--inactive":t.inactive };
+    for (const k in vars) r.setProperty(k, vars[k]);
+    const [R, G, B] = hexToRgb(t.base);
+    r.setProperty("--win-bg", "rgba(" + R + "," + G + "," + B + "," + (s.opacity / 100) + ")");
+    r.setProperty("--gap", s.gap + "px");
+    r.setProperty("--bw", s.bw + "px");
+    r.setProperty("--radius", s.radius + "px");
+    r.setProperty("--blur", s.blur + "px");
+    r.setProperty("--font", s.font === "sans" ? '"Segoe UI",system-ui,sans-serif'
+        : '"JetBrains Mono","JetBrainsMono Nerd Font","Fira Code","Cascadia Code",ui-monospace,monospace');
+    document.body.dataset.wall = s.wall;
+    document.body.classList.toggle("noanim", !s.anim);
+    $("stage").classList.toggle("grid", s.layout === "grid");
+    $("panic-hint").textContent = s.panic.length === 1 ? s.panic.toUpperCase() : s.panic;
+    try { music.volume = s.volume / 100; } catch (e) {}
+    r.setProperty("--ui-size", (s.textScale || 100)/100*14+"px");
+    r.setProperty("--avatar-radius", s.avatarShape === "rounded" ? "14px" : "50%");
+    document.body.classList.toggle("avatar-glass", s.avatarFinish === "glass");
+    document.body.classList.toggle("compact-cards", !!s.compact);
+    document.body.classList.toggle("hide-stats", !s.showStats);
+    $("hero").style.display = s.showHero ? "" : "none";
+    $("recent").style.display = s.showRecent ? "" : "none";
+    const custom = $("custom-wallpaper");
+    if (custom) {
+        custom.style.backgroundImage = validImage(state.wallpaper) ? 'url("'+state.wallpaper+'")' : "none";
+        custom.style.backgroundSize = s.wallFit === "contain" ? "contain" : "cover";
+        custom.style.opacity = validImage(state.wallpaper) ? "1" : "0";
+        $("wallpaper-shade").style.opacity = validImage(state.wallpaper) ? (s.wallDim || 0)/100 : "0";
+    }
+    applyTabCloak();
+    tick();
+    if (unlocked) { updateSel(); renderSide(); }
+}
+function setSetting(key, val, commit = true) {
+    if (state.settings[key] === val && !commit) return;
+    state.settings[key] = val;
+    state.settingsAt = Date.now();
+    if (commit) {
+        state.counters.settingChanges++;
+        if (key === "theme") state.counters.themeChanges++;
+    }
+    applySettings();
+    if (commit) { saveState(); checkAch(); }
+}
+
+/* =====================================================================
+   ACHIEVEMENT ENGINE + TOASTS
+   ===================================================================== */
+function toast(icon, title, body) {
+    const t = el("div", "toast");
+    t.innerHTML = '<div class="i"></div><div><b></b><span></span><small></small></div>';
+    t.querySelector(".i").textContent = icon;
+    t.querySelector("b").textContent = title;
+    t.querySelector("span").textContent = body[0];
+    t.querySelector("small").textContent = body[1] || "";
+    $("toasts").appendChild(t);
+    setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 450); }, (state.settings.toastSeconds || 5)*1000);
+}
+function checkAch() {
+    if (!unlocked) return;
+    let any = false;
+    ACH.forEach(a => {
+        if (!state.ach[a.id] && a.check()) {
+            state.ach[a.id] = Date.now(); any = true;
+            toast(a.icon, "Achievement unlocked", [a.name, a.desc]);
+        }
+    });
+    if (any) { saveState(); renderSide(); if (menuOpen() && menuTab === "ach") renderMenuPane(); }
+}
+
+function mergeInto(local, remote) {
+    if (!remote) return local;
+    for (const k in (remote.ach || {})) local.ach[k] = Math.min(local.ach[k] || Infinity, remote.ach[k]);
+    for (const k in (remote.launched || {})) local.launched[k] = Math.max(local.launched[k] || 0, remote.launched[k]);
+    local.playtime = Math.max(local.playtime, remote.playtime || 0);
+    if (!local.name && remote.name) local.name = remote.name;
+    local.onboarded = local.onboarded || !!remote.onboarded;
+    local.recent = Array.from(new Set([...(local.recent || []), ...(remote.recent || [])])).slice(0, 12);
+    for (const k in (remote.counters || {})) local.counters[k] = Math.max(local.counters[k] || 0, remote.counters[k]);
+    local.visited = Array.from(new Set([...(local.visited || []), ...(remote.visited || [])]));
+    if ((remote.settingsAt || 0) > (local.settingsAt || 0)) { local.settings = { ...DEFAULTS, ...remote.settings }; local.settingsAt = remote.settingsAt; }
+    return local;
+}
+function updateUserBtn() {
+    const b = $("user-btn"); b.replaceChildren();
+    if (validImage(state.avatar)) {
+        const img = el("img"); img.src = state.avatar; img.alt = "Profile picture"; b.appendChild(img);
+    } else {
+        const fallback = el("span"); fallback.textContent = "👤"; fallback.setAttribute("aria-hidden","true"); b.appendChild(fallback);
+    }
+    b.append(document.createTextNode(" " + displayName()));
+}
+function refreshAccountUi() { updateUserBtn(); if (menuOpen() && menuTab === "account") renderMenuPane(); }
+function makeBackup() {
+    const c = JSON.parse(JSON.stringify(state)); delete c.google;
+    return "SL1:" + btoa(unescape(encodeURIComponent(JSON.stringify(c))));
+}
+function importBackup(code) {
+    code = (code || "").trim();
+    if (!code.startsWith("SL1:")) return "That doesn't look like a backup code.";
+    let d;
+    try { d = JSON.parse(decodeURIComponent(escape(atob(code.slice(4))))); } catch (e) { return "Couldn't read that code."; }
+    if (!d || typeof d !== "object") return "Couldn't read that code.";
+    const num = v => typeof v === "number" && isFinite(v) && v >= 0;
+    const safe = { ach:{}, launched:{}, counters:{}, visited:[], recent:[], playtime:0 };
+    ACH.forEach(a => { if (d.ach && num(d.ach[a.id])) safe.ach[a.id] = d.ach[a.id]; });
+    ITEMS.forEach(i => { if (d.launched && num(d.launched[i.id])) safe.launched[i.id] = d.launched[i.id]; });
+    Object.keys(state.counters).forEach(k => { if (d.counters && num(d.counters[k])) safe.counters[k] = d.counters[k]; });
+    if (num(d.playtime)) safe.playtime = d.playtime;
+    if (Array.isArray(d.visited)) safe.visited = d.visited.filter(x => Number.isInteger(x) && x >= 0 && x < WORKSPACES.length);
+    if (Array.isArray(d.recent)) safe.recent = d.recent.filter(x => ITEMS.some(i => i.id === x)).slice(0, 12);
+    if (typeof d.name === "string") safe.name = d.name.slice(0, 20);
+    state = mergeInto(state, safe);
+    // settings: whitelist + clamp
+    const s = d.settings || {}, clean = {};
+    for (const k in DEFAULTS) if (typeof s[k] === typeof DEFAULTS[k]) clean[k] = s[k];
+    SCHEMA.forEach(def => { if (def.type === "range" && typeof clean[def.key] === "number") clean[def.key] = Math.min(def.max, Math.max(def.min, clean[def.key])); });
+    if (typeof clean.customTabTitle === "string") clean.customTabTitle = clean.customTabTitle.slice(0,100);
+    if (!THEMES[clean.theme]) clean.theme = DEFAULTS.theme;
+    if (!CLOAKS[clean.cloak]) clean.cloak = "off";
+    if (!/^(#[0-9a-f]{6})?$/i.test(clean.accent || "")) clean.accent = "";
+    if (!["aurora", "grid", "dots", "solid"].includes(clean.wall)) clean.wall = DEFAULTS.wall;
+    if (!["mono", "sans"].includes(clean.font)) clean.font = DEFAULTS.font;
+    if (!["carousel", "grid"].includes(clean.layout)) clean.layout = DEFAULTS.layout;
+    if (!["`", "Delete", "\\"].includes(clean.panic)) clean.panic = DEFAULTS.panic;
+    state.settings = { ...DEFAULTS, ...clean }; state.settingsAt = Date.now();
+    applySettings(); saveState(); render(); renderSide(); checkAch();
+    return "Imported. Progress merged, settings applied.";
+}
+
+/* =====================================================================
+   CAROUSEL
+   ===================================================================== */
+function visible() {
+    const ws = WORKSPACES[curWs], q = query.trim().toLowerCase();
+    return ITEMS.filter(i => (!ws.cats || ws.cats.includes(i.cat)) && (!q || i.title.toLowerCase().includes(q) || i.cat.toLowerCase().includes(q)));
+}
+function renderWs() {
+    const host = $("ws"); host.innerHTML = "";
+    WORKSPACES.forEach((w, i) => {
+        const b = el("button", "ws-btn" + (i === curWs ? " on" : "")); b.textContent = (i + 1) + " " + w.n;
+        b.onclick = () => setWs(i); host.appendChild(b);
+    });
+}
+function setWs(i) {
+    curWs = i; sel = 0;
+    if (!state.visited.includes(i)) { state.visited.push(i); saveState(); }
+    $("ws-name").textContent = WORKSPACES[i].n;
+    renderWs(); render(); checkAch();
+}
+function render() {
+    const list = visible(), track = $("track");
+    if (sel >= list.length) sel = Math.max(0, list.length - 1);
+    track.innerHTML = "";
+    list.forEach((it, i) => {
+        const c = el("div", "card"); c.style.setProperty("--h", hue(it.id));
+        c.innerHTML = '<div class="ic"></div><em></em><span></span><h3></h3>';
+        c.querySelector(".ic").textContent = CAT_ICON[it.cat] || "📦";
+        c.querySelector("span").textContent = it.cat;
+        c.querySelector("h3").textContent = it.title;
+        const n = state.launched[it.id]; if (n) c.querySelector("em").textContent = "×" + n;
+        c.onclick = () => { if (state.settings.layout === "grid" || i === sel) launch(it, false); else { sel = i; updateSel(); } };
+        track.appendChild(c);
+    });
+    $("count").textContent = list.length + (list.length === 1 ? " app" : " apps");
+    if (!list.length) { const e = el("div", "empty"); e.textContent = "No matches."; track.appendChild(e); }
+    updateSel(true);
+}
+function updateSel(instant) {
+    const list = visible(), track = $("track"), stage = $("stage");
+    [...track.children].forEach((c, i) => c.classList.toggle("sel", i === sel));
+    const c = track.children[sel];
+    if (c && list.length) {
+        if (state.settings.layout === "grid") { track.style.transform = ""; c.scrollIntoView({ block:"nearest", inline:"nearest" }); }
+        else {
+            if (instant) { track.style.transition = "none"; }
+            track.style.transform = "translateX(" + (stage.clientWidth / 2 - (c.offsetLeft + c.offsetWidth / 2)) + "px)";
+            if (instant) { void track.offsetWidth; track.style.transition = ""; }
+        }
+    }
+    const it = list[sel], info = $("info");
+    info.innerHTML = "<strong></strong><small></small>";
+    if (it) {
+        info.firstChild.textContent = it.title;
+        const n = state.launched[it.id] || 0;
+        info.lastChild.textContent = it.cat + " · " + (n ? "launched " + n + "×" : "never launched") + " · " + GAMES_DIR + it.file;
+    } else info.firstChild.textContent = "—";
+}
+function move(d) { const n = visible().length; if (!n) return; sel = Math.min(n - 1, Math.max(0, sel + d)); updateSel(); }
+function gridCols() {
+    const k = $("track").children; if (!k.length) return 1; let n = 0;
+    for (const c of k) { if (c.offsetTop === k[0].offsetTop) n++; else break; } return Math.max(1, n);
+}
+
+/* =====================================================================
+   SIDE TILES
+   ===================================================================== */
+function liveSecs() { return curGame ? (Date.now() - gameStart) / 1000 : 0; }
+function displayName() { return state.name || "Guest"; }
+let heroKey = "";
+function renderHero() {
+    const hr = new Date().getHours();
+    const g = hr < 5 ? "Burning the midnight oil" : hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
+    const key = g + "|" + displayName() + "|" + ITEMS.length;
+    if (key === heroKey) return; heroKey = key;
+    const box = $("hero"); box.innerHTML = "<h1></h1><p></p>";
+    box.firstChild.append(g + ", ");
+    const b = el("span", "grad"); b.textContent = displayName(); box.firstChild.appendChild(b);
+    box.lastChild.textContent = APP_NAME + " · " + ITEMS.length + " apps ready · press Enter to launch";
+}
+function renderProfile() {
+    const box = $("profile"), done = Object.keys(state.ach).length;
+    box.innerHTML = '<div class="profile-top"><div class="avatar"></div><div><b></b><div class="note" style="margin:2px 0 0"></div></div></div><div class="chips"></div>';
+    const av = box.querySelector(".avatar");
+    if (validImage(state.avatar)) { const img = el("img"); img.src = state.avatar; img.alt = "Profile picture"; av.appendChild(img); }
+    else av.textContent = displayName().charAt(0).toUpperCase();
+    box.querySelector("b").textContent = displayName();
+    box.querySelector(".note").textContent = "Saved on this device";
+    const chips = box.querySelector(".chips");
+    [[totalLaunches(), "Launches"], [fmtDur(state.playtime), "Played"], [done + "/" + ACH.length, "Trophies"]].forEach(([v, l]) => {
+        const c = el("div", "chip"); c.innerHTML = "<b></b><small></small>"; c.firstChild.textContent = v; c.lastChild.textContent = l; chips.appendChild(c); });
+}
+function renderRecent() {
+    const box = $("recent"); box.innerHTML = '<div class="sec-title">Recently used</div><div class="list"></div>';
+    const list = box.querySelector(".list");
+    const items = (state.recent || []).slice(0,state.settings.recentCount || 5).map(id => ITEMS.find(i => i.id === id)).filter(Boolean);
+    if (!items.length) { const e = el("div", "note"); e.textContent = "Nothing yet."; list.appendChild(e); }
+    items.forEach(it => {
+        const r = el("div", "recent-item"); r.innerHTML = "<span></span><span></span><small></small>";
+        r.children[0].textContent = CAT_ICON[it.cat] || "📦"; r.children[1].textContent = it.title; r.children[2].textContent = "×" + (state.launched[it.id] || 0);
+        r.onclick = () => launch(it, false); list.appendChild(r); });
+}
+function renderAchMini() {
+    const done = Object.keys(state.ach).length, box = $("ach-mini");
+    box.innerHTML = '<div class="wtitle" style="padding:0 0 8px;border:0"><b>Achievements</b><span class="spacer"></span><span></span></div><div class="bar-track"><div></div></div><div class="list"></div>';
+    box.querySelector(".wtitle span:last-child").textContent = done + "/" + ACH.length;
+    box.querySelector(".bar-track div").style.width = (done / ACH.length * 100) + "%";
+    const list = box.querySelector(".list");
+    const recent = ACH.filter(a => state.ach[a.id]).sort((a, b) => state.ach[b.id] - state.ach[a.id]).slice(0, 4);
+    if (!recent.length) { const e = el("div", "note"); e.textContent = "Nothing yet. Go launch something."; list.appendChild(e); }
+    recent.forEach(a => { const d = el("div", "mini-ach"); d.innerHTML = '<span class="i"></span><div><span></span><small></small></div>';
+        d.querySelector(".i").textContent = a.icon; d.querySelector("div span").textContent = a.name; d.querySelector("small").textContent = a.desc; list.appendChild(d); });
+}
+function renderSide() { updateUserBtn(); renderProfile(); renderRecent(); renderAchMini(); renderHero(); }
+
+/* =====================================================================
+   MENU (ESDE-style)
+   ===================================================================== */
+let menuTab = "settings", padMenu = false;
+const MENU_TABS = [["settings", "⚙  Settings"], ["ach", "🏆  Achievements"], ["account", "☁  Account"], ["about", "ℹ  About"], ["exit", "⏻  Exit Hub"]];
+const menuOpen = () => $("menu").style.display === "flex";
+function openMenu(tab) { menuTab = tab || menuTab; $("menu").style.display = "flex"; renderMenu(); }
+function closeMenu() { $("menu").style.display = "none"; }
+function renderMenu() {
+    const nav = $("menu-nav"); nav.innerHTML = "";
+    MENU_TABS.forEach(([id, label]) => {
+        const b = el("button", id === menuTab ? "on" : ""); b.textContent = label;
+        b.onclick = () => { if (id === "exit") { panic(); return; } menuTab = id; renderMenu(); };
+        nav.appendChild(b);
+    });
+    renderMenuPane();
+    if (padMenu) { const on = document.querySelector("#menu-nav .on"); if (on) on.focus(); }
+}
+function renderMenuPane() {
+    const pane = $("menu-pane"); pane.innerHTML = "";
+    $("menu-title").textContent = (MENU_TABS.find(t => t[0] === menuTab) || [0, menuTab])[1].replace(/^\S+\s+/, "");
+    if (menuTab === "settings") renderSettings(pane);
+    else if (menuTab === "ach") renderAchievements(pane);
+    else if (menuTab === "account") renderAccount(pane);
+    else renderAbout(pane);
+}
+function renderSettings(pane) {
+    SCHEMA.forEach(def => {
+        if (def.section) { const h = el("h3"); h.textContent = def.section; pane.appendChild(h); return; }
+        const row = el("div", "row"), lab = el("label"); lab.textContent = def.label; row.appendChild(lab);
+        const val = state.settings[def.key]; let ctl;
+        if (def.type === "select") {
+            ctl = el("select");
+            def.options.forEach(([v, n]) => { const o = el("option"); o.value = v; o.textContent = n; if (v === val) o.selected = true; ctl.appendChild(o); });
+            ctl.onchange = () => setSetting(def.key, ctl.value);
+        } else if (def.type === "range") {
+            ctl = el("div", "range");
+            const inp = el("input"), out = el("output");
+            inp.type = "range"; inp.min = def.min; inp.max = def.max; inp.value = val; out.textContent = val + def.unit;
+            inp.oninput = () => { out.textContent = inp.value + def.unit; setSetting(def.key, +inp.value, false); };
+            inp.onchange = () => setSetting(def.key, +inp.value, true);
+            ctl.append(inp, out);
+        } else if (def.type === "toggle") {
+            ctl = el("input", "sw"); ctl.type = "checkbox"; ctl.checked = !!val;
+            ctl.onchange = () => setSetting(def.key, ctl.checked);
+        } else if (def.type === "swatch") {
+            ctl = el("div", "swatches");
+            SWATCHES.forEach(c => { const b = el("button", c === val ? "on" : ""); if (c) b.style.background = c; else b.textContent = "⟲"; b.title = c || "Theme default";
+                b.onclick = () => { setSetting("accent", c); renderMenuPane(); }; ctl.appendChild(b); });
+        }
+        row.appendChild(ctl); pane.appendChild(row);
+    });
+    const heading=el("h3"); heading.textContent="Tab cloak preview";pane.appendChild(heading);
+    const preview=el("div","cloak-preview");
+    const icon=el("img","cloak-preview-icon");icon.alt="Tab icon";
+    const title=el("span","cloak-preview-title");preview.append(icon,title);pane.appendChild(preview);
+    const info=el("p","note");info.textContent="Changes only this page’s tab title and icon—not its URL, history, or network activity. Preset icons are local illustrations, not official assets.";pane.appendChild(info);
+    const row=el("div","row");const label=el("label");label.textContent="Custom tab title";
+    const field=el("input");field.type="text";field.maxLength=100;field.value=state.settings.customTabTitle || "Study notes";label.htmlFor="custom-tab-title";field.id="custom-tab-title";
+    field.oninput=()=>{state.settings.customTabTitle=field.value;state.settings.cloak="custom";applyTabCloak();saveState();};
+    field.onchange=()=>renderMenuPane();row.append(label,field);pane.appendChild(row);
+    const picker=el("input");picker.type="file";picker.accept="image/png,image/jpeg,image/webp";picker.hidden=true;
+    const upload=el("button","btn");upload.textContent="Upload custom tab icon";upload.onclick=()=>picker.click();
+    const clear=el("button","btn");clear.textContent="Reset custom icon";clear.style.marginLeft="8px";
+    const status=el("p","note");status.setAttribute("role","status");
+    picker.onchange=async()=>{try{if(!picker.files[0])return;upload.disabled=true;state.customTabIcon=await processedImage(picker.files[0],true);state.settings.cloak="custom";saveState();applyTabCloak();renderMenuPane();}catch(e){status.textContent=e.message;}finally{upload.disabled=false;picker.value="";}};
+    clear.onclick=()=>{state.customTabIcon="";saveState();applyTabCloak();};
+    pane.append(upload,clear,picker,status);applyTabCloak();
+    const r = el("div", "row"); const b = el("button", "btn"); b.textContent = "Reset all settings";
+    b.onclick = () => { state.settings = { ...DEFAULTS }; state.settingsAt = Date.now(); applySettings(); saveState(); renderMenuPane(); };
+    r.appendChild(b); pane.appendChild(r);
+}
+function renderAchievements(pane) {
+    const done = Object.keys(state.ach).length;
+    pane.innerHTML = "<h2></h2><div class='bar-track'><div></div></div><div class='ach-grid'></div>";
+    pane.querySelector("h2").textContent = done + " / " + ACH.length + " unlocked";
+    pane.querySelector(".bar-track div").style.width = (done / ACH.length * 100) + "%";
+    const g = pane.querySelector(".ach-grid");
+    ACH.forEach(a => {
+        const got = state.ach[a.id], d = el("div", "ach " + (got ? "done" : "locked"));
+        d.innerHTML = '<div class="i"></div><div><b></b><small></small><small class="when"></small></div>';
+        d.querySelector(".i").textContent = got ? a.icon : "🔒";
+        d.querySelector("b").textContent = a.name;
+        d.querySelector("small").textContent = a.desc;
+        d.querySelector(".when").textContent = got ? new Date(got).toLocaleDateString() : "";
+        g.appendChild(d);
+    });
+}
+function renderAccount(pane) {
+    pane.innerHTML = "<h2>Account</h2>";
+    const nr = el("div", "row"); nr.innerHTML = "<label>Display name</label>";
+    const ni = el("input"); ni.type = "text"; ni.maxLength = 20; ni.placeholder = "Your name"; ni.value = state.name || "";
+    ni.onchange = () => { state.name = ni.value.trim().slice(0, 20); state.settingsAt = Date.now(); saveState(); renderSide(); renderHero(); };
+    nr.appendChild(ni); pane.appendChild(nr);
+
+    const picTitle = el("h3"); picTitle.textContent = "Profile picture"; pane.appendChild(picTitle);
+    imageControls(pane,"avatar","Change profile picture",true);
+    const wallTitle = el("h3"); wallTitle.textContent = "Custom wallpaper"; pane.appendChild(wallTitle);
+    imageControls(pane,"wallpaper","Upload wallpaper",false);
+    const heading = el("h3"); heading.textContent = "Save & restore";
+    const note = el("p", "note"); note.textContent = "Download your profile, pictures, custom tab icon, achievements, launcher statistics, settings and study notes. Individual apps may store their own progress separately.";
+    const message = el("p", "note"); message.setAttribute("role", "status");
+    const download = el("button", "btn"); download.textContent = "Download Save";
+    download.onclick = () => {
+        const data = {format:"speed-launcher-save", version:1, savedAt:new Date().toISOString(), state:JSON.parse(JSON.stringify(state))};
+        const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/json"}));
+        const a = document.createElement("a"); a.href = url; a.download = "launcher-save-" + new Date().toISOString().slice(0,10) + ".json";
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url),1000);
+        state.counters.exports = (state.counters.exports || 0)+1; saveState(); checkAch(); message.textContent = "Save file prepared.";
+    };
+    const input = el("input"); input.type = "file"; input.accept = ".json,application/json"; input.hidden = true;
+    const load = el("button", "btn"); load.textContent = "Load Save"; load.style.marginLeft = "8px"; load.onclick = () => input.click();
+    input.onchange = async () => {
+        try {
+            const file = input.files[0]; if (!file) return;
+            if (file.size > 5000000) throw new Error("Save file exceeds 5 MB.");
+            const data = JSON.parse(await file.text()), d = data.state;
+            if (data.format !== "speed-launcher-save" || data.version !== 1 || !d || typeof d !== "object" || Array.isArray(d)) throw new Error("Choose a valid launcher save.");
+            const result = importBackup("SL1:" + btoa(unescape(encodeURIComponent(JSON.stringify(d)))));
+            if (!result.startsWith("Imported")) throw new Error(result);
+            if (typeof d.name === "string") state.name = d.name.slice(0,20);
+            state.onboarded = true; state.sharpWallpaperVersion = 1;
+            for (const key of ["avatar","wallpaper","customTabIcon"]) state[key] = validImage(d[key]) ? d[key] : "";
+            state.bookNotes = {};
+            for (let i=1;i<=4;i++) if (d.bookNotes && typeof d.bookNotes[i] === "string") state.bookNotes[i] = d.bookNotes[i].slice(0,20000);
+            state.bookBookmark = Number.isInteger(d.bookBookmark) ? Math.max(1,Math.min(4,d.bookBookmark)) : 1;
+            state.bookFont = typeof d.bookFont === "number" ? Math.max(14,Math.min(26,d.bookFont)) : 18;
+            restoreBook();
+            if (typeof d.musicEnabled === "boolean") { musicEnabled = d.musicEnabled; state.musicEnabled = musicEnabled; }
+            state.counters.imports = (state.counters.imports || 0)+1;
+            saveState(); applySettings(); syncMusic(); renderSide(); renderHero(); refreshAccountUi(); checkAch();
+        } catch(e) { message.textContent = "Could not load save: " + e.message; }
+        input.value = "";
+    };
+    pane.append(heading,note,download,load,input,message);
+}
+function renderAbout(pane) {
+    pane.innerHTML = "<h2>" + APP_NAME + "</h2><p class='note'>Author: <b>Jules Nguyen</b></p>" +
+        "<h3>Shortcuts</h3><div class='note'><kbd>←</kbd> <kbd>→</kbd> browse · <kbd>↑</kbd> <kbd>↓</kbd> rows in grid · <kbd>Enter</kbd> launch<br>" +
+        "<kbd>1</kbd>–<kbd>4</kbd> switch workspace · <kbd>/</kbd> search · <kbd>M</kbd> menu · <kbd>Esc</kbd> close<br>Panic key: set in Settings → Privacy</div>";
+}
+
+/* =====================================================================
+   LAUNCH / GAME WINDOW
+   ===================================================================== */
+function launch(it, viaKey) {
+    state.launched[it.id] = (state.launched[it.id] || 0) + 1;
+    state.recent = [it.id, ...(state.recent || []).filter(x => x !== it.id)].slice(0, 12);
+    if (viaKey) state.counters.keyLaunch++;
+    openGame(GAMES_DIR + it.file, it);
+}
+function openGame(url, it) {
+    try { music.pause(); } catch (e) {}
+    curGame = it; gameStart = Date.now();
+    $("in-game-panic").style.display = "inline-flex";
+    $("current-title").textContent = "RUNNING: " + it.name;
+    $("game-frame").src = url;
+    $("game-overlay").style.display = "block";
+    saveState(); checkAch();
+}
+// Capture launcher shortcuts before same-origin games handle them.
+const watchedGameWindows = new WeakSet();
+const watchedGameFrames = new WeakSet();
+function handleGameShortcut(e) {
+    if (!unlocked || !curGame || e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const panicKey = state.settings.panic;
+    if (key === (panicKey.length === 1 ? panicKey.toLowerCase() : panicKey)) {
+        e.preventDefault(); e.stopImmediatePropagation(); panic(); return;
+    }
+    if (key === "p" && !e.target.isContentEditable && !["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)) {
+        e.preventDefault(); setMusicEnabled(false);
+    }
+}
+function attachGameShortcuts(win) {
+    try {
+        const doc = win.document;
+        if (!watchedGameWindows.has(doc)) {
+            watchedGameWindows.add(doc);
+            win.addEventListener("keydown", handleGameShortcut, true);
+            new win.MutationObserver(() => scanGameFrames(doc)).observe(doc.documentElement,{childList:true,subtree:true});
+        }
+        scanGameFrames(doc);
+    } catch (e) { /* Cross-origin frames cannot expose their keyboard events. */ }
+}
+function scanGameFrames(doc) {
+    doc.querySelectorAll("iframe,frame").forEach(frame => {
+        if (!watchedGameFrames.has(frame)) {
+            watchedGameFrames.add(frame);
+            frame.addEventListener("load",()=>attachGameShortcuts(frame.contentWindow));
+        }
+        try { if (frame.contentDocument) attachGameShortcuts(frame.contentWindow); } catch (e) {}
+    });
+}
+$("game-frame").addEventListener("load", () => attachGameShortcuts($("game-frame").contentWindow));
+function endSession() {
+    $("in-game-panic").style.display = "none";
+    if (curGame) { state.playtime += Math.round((Date.now() - gameStart) / 1000); curGame = null; saveState(); }
+}
+function closeGame() {
+    endSession();
+    $("game-overlay").style.display = "none";
+    $("game-overlay").classList.remove("full");
+    $("game-frame").src = "about:blank";
+    syncMusic();
+    render(); renderSide(); checkAch();
+}
+$("full-btn").addEventListener("click", () => $("game-overlay").classList.toggle("full"));
+
+/* =====================================================================
+   WELCOME / NAME / GOOGLE SIGN-IN SCREEN
+   ===================================================================== */
+const welcomeEl = $("welcome");
+const welcomeOpen = () => welcomeEl.style.display === "flex";
+function showWelcome() {
+    const lock = false;
+    $("wl-name").value = state.name || "";
+    $("wl-note").textContent = "";
+    welcomeEl.style.display = "flex";
+    setTimeout(() => { if (!lock) $("wl-name").focus(); }, 50);
+}
+function finishWelcome() {
+    welcomeEl.style.display = "none";
+    state.onboarded = true; saveState();
+    renderSide(); renderHero();
+    toast("✦", "Welcome to " + APP_NAME, [displayName(), "Press M for settings"]);
+}
+function welcomeContinue() {
+    const n = $("wl-name").value.trim();
+    if (!n) { $("wl-note").textContent = "Enter a name first."; $("wl-name").focus(); return; }
+    state.name = n.slice(0, 20); state.settingsAt = Date.now(); finishWelcome();
+}
+$("wl-guest").addEventListener("click", welcomeContinue);
+$("wl-name").addEventListener("keydown", e => { if (e.key === "Enter") welcomeContinue(); });
+
+/* =====================================================================
+   DECOY / PASSWORD / PANIC
+   ===================================================================== */
+const passwordModal = $("password-modal");
+const passwordInput = $("password-input");
+const passwordError = $("password-error");
+const togglePassword = $("toggle-password");
+
+function setWrongPasswordCookie() {
+    document.cookie = "launcher_wrong_password=1; max-age=" + (60 * 60 * 24 * 30) + "; path=/; SameSite=Lax";
+}
+let activeChapter = 1;
+function showChapter(num, clickedItem) {
+    activeChapter = Math.max(1,Math.min(4,num));
+    document.querySelectorAll(".chapter").forEach(c => c.classList.toggle("active",c.id === "ch"+activeChapter));
+    document.querySelectorAll("#book-decoy .nav-item").forEach((n,i)=>n.classList.toggle("nav-active",i+1===activeChapter));
+    document.querySelector(".book-content").scrollTop=0;
+    $("book-page-number").textContent=activeChapter+" / 4";
+    $("book-prev").disabled=activeChapter===1;$("book-next").disabled=activeChapter===4;
+    $("book-bookmark").textContent=state.bookBookmark===activeChapter ? "★ Chapter bookmarked" : "☆ Bookmark chapter";
+}
+function unlockLauncher() {
+    passwordInput.value = ""; passwordInput.type = "password"; passwordError.textContent = "";
+    togglePassword.textContent = "👁"; togglePassword.title = "Show password"; togglePassword.setAttribute("aria-label", "Show password");
+    passwordModal.style.display = "flex";
+    setTimeout(() => passwordInput.focus(), 0);
+}
+function closePasswordModal() { passwordModal.style.display = "none"; passwordInput.value = ""; passwordError.textContent = ""; }
+function submitPassword() {
+    if (passwordInput.value !== correctPassword) { setWrongPasswordCookie(); window.location.replace(wrongPasswordRedirect); return; }
+    passwordModal.style.display = "none"; passwordInput.value = "";
+    $("book-decoy").style.display = "none";
+    $("main-launcher").style.display = "flex";
+    unlocked = true; sessionStart = Date.now();
+    applySettings(); renderWs(); render(); renderSide(); refreshAccountUi();
+    requestAnimationFrame(() => updateSel(true));
+    syncMusic();
+    checkAch();
+    if (!state.onboarded) showWelcome();
+}
+function panic() {
+    if (!unlocked) return;
+    try { if (document.fullscreenElement) document.exitFullscreen().catch(()=>{}); } catch (e) {}
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+    state.counters.panics++;
+    endSession();
+    closePasswordModal(); closeMenu(); welcomeEl.style.display = "none";
+    unlocked = false;
+    $("book-decoy").style.display = "flex";
+    $("main-launcher").style.display = "none";
+    $("game-overlay").style.display = "none";
+    $("game-overlay").classList.remove("full");
+    $("game-frame").src = "about:blank";
+    try { music.pause(); } catch (e) {}
+    saveState();
+    unlocked = true; checkAch(); unlocked = false;   // award panic achievement silently for next session
+}
+
+$("submit-password").addEventListener("click", submitPassword);
+$("cancel-password").addEventListener("click", closePasswordModal);
+togglePassword.addEventListener("click", () => {
+    const hidden = passwordInput.type === "password";
+    passwordInput.type = hidden ? "text" : "password";
+    togglePassword.textContent = hidden ? "🙈" : "👁";
+    togglePassword.title = hidden ? "Hide password" : "Show password";
+    togglePassword.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+    passwordInput.focus();
+});
+passwordInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") submitPassword();
+    if (e.key === "Escape") closePasswordModal();
+});
+
+/* =====================================================================
+   WIRING
+   ===================================================================== */
+function syncMusic() {
+    if (!musicEnabled || !unlocked || curGame) { music.pause(); return; }
+    music.play().catch(() => { musicBtn.title = "Click Play to start. Check that the base64 audio is filled in."; });
+}
+function setMusicEnabled(enabled) { musicEnabled = enabled; state.musicEnabled = enabled; saveState(); syncMusic(); }
+musicBtn.addEventListener("click", () => {
+    if (curGame) return;
+    const play = music.paused; setMusicEnabled(play);
+    if (play) { state.counters.music++; saveState(); checkAch(); }
+});
+music.addEventListener("play", () => { if (curGame || !unlocked || !musicEnabled) music.pause(); });
+music.addEventListener("play",  () => { musicBtn.textContent = "⏸ Pause"; });
+music.addEventListener("pause", () => { musicBtn.textContent = "▶ Play"; });
+
+$("menu-btn").addEventListener("click", () => openMenu("settings"));
+$("user-btn").addEventListener("click", () => openMenu("account"));
+$("ach-mini").addEventListener("click", () => openMenu("ach"));
+$("menu-close").addEventListener("click", closeMenu);
+$("menu").addEventListener("mousedown", e => { if (e.target === $("menu")) closeMenu(); });
+
+const searchEl = $("search");
+searchEl.addEventListener("input", () => {
+    query = searchEl.value; sel = 0; render();
+    if (query && !state.counters.searches) { state.counters.searches = 1; saveState(); checkAch(); }
+});
+searchEl.addEventListener("keydown", e => {
+    if (e.key === "Escape") { searchEl.value = ""; query = ""; searchEl.blur(); render(); }
+    if (e.key === "Enter") { const it = visible()[sel]; searchEl.blur(); if (it) launch(it, true); }
+    if (e.key === "ArrowRight") { e.preventDefault(); move(1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); move(-1); }
+});
+
+let wheelLock = 0;
+$("stage").addEventListener("wheel", e => {
+    if (state.settings.layout === "grid") return;
+    e.preventDefault();
+    const now = Date.now(); if (now - wheelLock < 110) return; wheelLock = now;
+    move((e.deltaY || e.deltaX) > 0 ? 1 : -1);
+}, { passive:false });
+let touchX = null;
+$("stage").addEventListener("touchstart", e => { touchX = e.touches[0].clientX; }, { passive:true });
+$("stage").addEventListener("touchend", e => {
+    if (touchX === null || state.settings.layout === "grid") return;
+    const dx = e.changedTouches[0].clientX - touchX; touchX = null;
+    if (Math.abs(dx) > 45) move(dx < 0 ? 1 : -1);
+});
+window.addEventListener("resize", () => { if (unlocked) updateSel(true); });
+
+window.addEventListener("keydown", e => {
+    const open = $("main-launcher").style.display === "flex"; if (!open) return;
+    const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+    const mod = e.ctrlKey || e.metaKey || e.altKey;
+    if (!typing && !mod && e.key.toLowerCase() === "p") { e.preventDefault(); setMusicEnabled(false); return; }
+    if (!typing && !mod && e.key.toLowerCase() === state.settings.panic.toLowerCase()) { panic(); return; }
+    if (e.key === "Escape") { if (menuOpen()) closeMenu(); else if (curGame) closeGame(); return; }
+    if (typing || mod || curGame || menuOpen() || welcomeOpen()) return;
+    const k = e.key;
+    if (k === "ArrowRight") { e.preventDefault(); move(1); }
+    else if (k === "ArrowLeft") { e.preventDefault(); move(-1); }
+    else if (k === "ArrowDown" && state.settings.layout === "grid") { e.preventDefault(); move(gridCols()); }
+    else if (k === "ArrowUp" && state.settings.layout === "grid") { e.preventDefault(); move(-gridCols()); }
+    else if (k === "Home") { sel = 0; updateSel(); }
+    else if (k === "End") { sel = Math.max(0, visible().length - 1); updateSel(); }
+    else if (k === "Enter") { const it = visible()[sel]; if (it) launch(it, true); }
+    else if (k === "/") { e.preventDefault(); searchEl.focus(); }
+    else if (k.toLowerCase() === "m" || k === "Tab") { e.preventDefault(); openMenu("settings"); }
+    else if (/^[1-4]$/.test(k)) setWs(+k - 1);
+});
+
+/* =====================================================================
+   GAMEPAD
+   Hub:  D-pad/stick browse · A launch · B clear search · LB/RB workspace · Y/Start menu · hold Select = panic
+   Menu: D-pad/stick move & adjust · A press · B/Y/Start close · LB/RB switch tab
+   Game: hold Select+Start = back to hub (all other input goes to the game)
+   ===================================================================== */
+const padPrev = {}, padRep = {};
+let selectHeld = 0, comboHeld = 0, padLock = false;
+window.addEventListener("gamepadconnected", e => {
+    $("pad-hint").style.display = "";
+    if (!state.counters.pad) { state.counters.pad = 1; saveState(); }
+    if (unlocked) { toast("🎮", "Controller connected", [e.gamepad.id.slice(0, 36), "A launch · B back · Y menu"]); checkAch(); }
+});
+window.addEventListener("gamepaddisconnected", () => {
+    if (![...navigator.getGamepads()].some(Boolean)) $("pad-hint").style.display = "none";
+});
+function menuPad(cur, press, dir) {
+    padMenu = true;
+    const f = [...$("menu").querySelectorAll("button, select, input")].filter(e => e.offsetParent !== null && !e.disabled);
+    const i = f.indexOf(document.activeElement);
+    const U = dir("up"), D = dir("down"), L = dir("left"), R = dir("right");
+    if (D && f.length) f[(i + 1) % f.length].focus();
+    if (U && f.length) f[i <= 0 ? f.length - 1 : i - 1].focus();
+    const a = document.activeElement;
+    if ((L || R) && a) {
+        const d = R ? 1 : -1;
+        if (a.type === "range") {
+            const st = Math.max(1, Math.round((a.max - a.min) / 20));
+            a.value = Math.min(+a.max, Math.max(+a.min, +a.value + d * st));
+            a.dispatchEvent(new Event("input", { bubbles:true })); a.dispatchEvent(new Event("change", { bubbles:true }));
+        } else if (a.tagName === "SELECT") {
+            const n = a.selectedIndex + d;
+            if (n >= 0 && n < a.options.length) { a.selectedIndex = n; a.dispatchEvent(new Event("change", { bubbles:true })); }
+        }
+    }
+    if (press("a") && a && (a.tagName === "BUTTON" || a.type === "checkbox")) a.click();
+    if (press("b") || press("start") || press("y")) closeMenu();
+    const tabs = MENU_TABS.map(t => t[0]).filter(t => t !== "exit"), k = tabs.indexOf(menuTab);
+    if (press("lb")) { menuTab = tabs[(k + tabs.length - 1) % tabs.length]; renderMenu(); }
+    if (press("rb")) { menuTab = tabs[(k + 1) % tabs.length]; renderMenu(); }
+}
+function handlePad(gp, ts) {
+    const bt = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
+    const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+    const cur = { a:bt(0), b:bt(1), x:bt(2), y:bt(3), lb:bt(4), rb:bt(5), sel:bt(8), start:bt(9),
+        up:bt(12) || ay < -0.6, down:bt(13) || ay > 0.6, left:bt(14) || ax < -0.6, right:bt(15) || ax > 0.6 };
+    const prev = padPrev[gp.index] || {}, rep = padRep[gp.index] || (padRep[gp.index] = {});
+    padPrev[gp.index] = cur;
+    const press = k => cur[k] && !prev[k];
+    const dir = k => {
+        if (!cur[k]) { rep[k] = 0; return false; }
+        if (!prev[k]) { rep[k] = ts + 380; return true; }
+        if (ts >= rep[k]) { rep[k] = ts + 130; return true; }
+        return false;
+    };
+    if (welcomeOpen()) return;
+    if (padLock) { if (cur.sel || cur.start) return; padLock = false; }
+    if (curGame) {
+        if (cur.sel && cur.start) { comboHeld = comboHeld || ts; if (ts - comboHeld > 800) { comboHeld = 0; padLock = true; closeGame(); } }
+        else comboHeld = 0;
+        return;
+    }
+    if (cur.sel && !cur.start) { selectHeld = selectHeld || ts; if (ts - selectHeld > 1000) { selectHeld = 0; padLock = true; panic(); return; } }
+    else selectHeld = 0;
+    if (menuOpen()) { menuPad(cur, press, dir); return; }
+    if (press("lb")) setWs((curWs + WORKSPACES.length - 1) % WORKSPACES.length);
+    if (press("rb")) setWs((curWs + 1) % WORKSPACES.length);
+    const R = dir("right"), L = dir("left"), D = dir("down"), U = dir("up");
+    if (R) move(1);
+    if (L) move(-1);
+    if (state.settings.layout === "grid") { if (D) move(gridCols()); if (U) move(-gridCols()); }
+    if (press("a")) { const it = visible()[sel]; if (it) launch(it, true); }
+    if (press("b") && query) { searchEl.value = ""; query = ""; sel = 0; render(); }
+    if (press("y") || press("start")) { padMenu = true; openMenu("settings"); }
+}
+function padLoop(ts) {
+    requestAnimationFrame(padLoop);
+    if (!unlocked || !navigator.getGamepads) return;
+    for (const gp of navigator.getGamepads()) if (gp) handlePad(gp, ts);
+}
+
+function tick() {
+    const d = new Date(), s = state.settings;
+    const time = d.toLocaleTimeString([], Object.assign({ hour:"2-digit", minute:"2-digit", hour12:!s.h24 }, s.secs ? { second:"2-digit" } : {}));
+    $("clock").textContent = d.toLocaleDateString([], { weekday:"short", month:"short", day:"numeric" }) + "  ·  " + time;
+    if (unlocked) renderHero();
+}
+setInterval(tick, 1000);
+requestAnimationFrame(padLoop);
+$("brand-name").textContent = APP_NAME.toUpperCase();
+$("wl-title").textContent = APP_NAME.toUpperCase();
+document.querySelectorAll(".app-name").forEach(e => { e.textContent = APP_NAME.toLowerCase(); });
+applySettings();   // applies tab cloak + theme even while the decoy is showing
+
+function validImage(value) {
+    return typeof value === "string" && value.length < 2500000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+async function processedImage(file, avatar) {
+    if (!file || !["image/png","image/jpeg","image/webp"].includes(file.type)) throw new Error("Choose a PNG, JPG or WebP image.");
+    if (file.size > 12000000) throw new Error("Choose an image smaller than 12 MB.");
+    const url = URL.createObjectURL(file);
+    try {
+        const img = new Image(); img.src = url; await img.decode();
+        const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        if (avatar) {
+            const side = Math.min(img.width,img.height); canvas.width=256;canvas.height=256;
+            ctx.drawImage(img,(img.width-side)/2,(img.height-side)/2,side,side,0,0,256,256);
+        } else {
+            const ratio = Math.min(1,2560/img.width,1600/img.height);
+            canvas.width=Math.max(1,Math.round(img.width*ratio));canvas.height=Math.max(1,Math.round(img.height*ratio));
+            ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        }
+        ctx.imageSmoothingEnabled = true;
+        let result = canvas.toDataURL("image/webp",avatar ? 0.92 : 0.95);
+        if (!validImage(result) && !avatar) result = canvas.toDataURL("image/webp",0.87);
+        if (!validImage(result)) throw new Error("Image could not be prepared. Try a smaller image.");
+        return result;
+    } finally { URL.revokeObjectURL(url); }
+}
+function imageControls(pane,key,label,avatar) {
+    if (validImage(state[key])) { const preview = el("img",avatar ? "profile-preview" : "wall-preview"); preview.src=state[key];preview.alt=avatar ? "Profile preview" : "Wallpaper preview";pane.appendChild(preview); }
+    const input=el("input");input.type="file";input.accept="image/png,image/jpeg,image/webp";input.hidden=true;
+    const upload=el("button","btn");upload.textContent=label;upload.onclick=()=>input.click();
+    const remove=el("button","btn");remove.textContent="Reset";remove.style.marginLeft="8px";
+    const status=el("p","note");status.setAttribute("role","status");
+    remove.onclick=()=>{state[key]="";saveState();applySettings();refreshAccountUi();};
+    input.onchange=async()=>{try { if(!input.files[0])return;upload.disabled=true;state[key]=await processedImage(input.files[0],avatar);saveState();applySettings();checkAch();refreshAccountUi();}catch(e){status.textContent=e.message;}finally{upload.disabled=false;input.value="";}};
+    pane.append(upload,remove,input,status);
+}
+
+$("book-search").oninput=e=>{
+    let count=0;document.querySelectorAll("#book-decoy .nav-item").forEach(n=>{
+        const match=n.textContent.toLowerCase().includes(e.target.value.toLowerCase());n.style.display=match?"block":"none";if(match)count++;
+    });$("book-no-results").hidden=count>0;
+};
+$("book-prev").onclick=()=>showChapter(activeChapter-1);$("book-next").onclick=()=>showChapter(activeChapter+1);
+$("book-bookmark").onclick=()=>{state.bookBookmark=activeChapter;saveState();showChapter(activeChapter);};
+$("book-return").onclick=()=>showChapter(state.bookBookmark || 1);
+function bookFont(delta){state.bookFont=Math.max(14,Math.min(26,(state.bookFont || 18)+delta));restoreBook();saveState();}
+$("book-smaller").onclick=()=>bookFont(-1);$("book-larger").onclick=()=>bookFont(1);
+function restoreBook(){document.querySelectorAll(".book-notes").forEach((n,i)=>{n.value=(state.bookNotes || {})[i+1] || "";});document.querySelector(".book-content").style.setProperty("--reader-size",(state.bookFont || 18)+"px");}
+document.querySelectorAll(".book-notes").forEach((n,i)=>n.addEventListener("input",()=>{if(!state.bookNotes)state.bookNotes={};state.bookNotes[i+1]=n.value.slice(0,20000);saveState();}));
+document.querySelector(".book-content").addEventListener("scroll",e=>{const c=e.target,max=c.scrollHeight-c.clientHeight;$("book-progress").style.width=(max>0?c.scrollTop/max*100:100)+"%";});
+restoreBook();showChapter(1);
+
+$("in-game-panic").addEventListener("click", panic);
+
+window.addEventListener("focus",applyTabCloak);
+document.addEventListener("visibilitychange",applyTabCloak);
+</script>
+</body>
+</html>
